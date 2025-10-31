@@ -1,8 +1,17 @@
-# FP_Dash
+ # FP_Dash
 Freely Programmable Dash firmware
 
 after clone do not forget:
+	git submodule init
+	git submodule update --recursive
+
+	or
+
 	git submodule update --init --recursive
+
+Check submodule config:
+
+	git config --get-regexp submodule
 
 How to prepare work environment:
 
