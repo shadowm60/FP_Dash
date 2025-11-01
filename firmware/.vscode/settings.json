@@ -18,7 +18,8 @@
   ],
   "files.associations": {
     "freertos.h": "c",
-    "esp_err.h": "c"
+    "esp_err.h": "c",
+    "cstdlib": "c"
   },
   "idf.portWin": "COM3",
   "idf.flashType": "UART"
