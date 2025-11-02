@@ -21,6 +21,7 @@
     "esp_err.h": "c",
     "cstdlib": "c"
   },
-  "idf.portWin": "COM3",
-  "idf.flashType": "UART"
+  "idf.portWin": "COM6",
+  "idf.flashType": "UART",
+  "idf.monitorPort": "COM6"
 }

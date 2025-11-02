@@ -1,4 +1,4 @@
-[submodule "firmware/external/isotp"]
-	path = firmware/external/isotp
-	url = https://github.com/lishen2/isotp-c.git
+[submodule "firmware/components/isotp"]
+	path = firmware/components/isotp
+	url = https://github.com/shadowm60/isotp-c.git
 	branch = master
