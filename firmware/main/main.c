@@ -7,7 +7,7 @@
 #include "lcd.h"
 #include "can.h"
 #include "led.h"
-
+#include "obd_handler.h"
 
 
 static const char *TAG = "FP_Dash_main";
@@ -44,6 +44,8 @@ void app_main( void ) {
 
     init_can();
     init_can_tasks();
+
+    init_obd_handler();
 
 
 }

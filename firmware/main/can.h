@@ -37,6 +37,8 @@
 void init_can( void );
 void init_can_tasks( void );
 void can_send_message(twai_message_t *msg);
+void can_send_isotp_message( uint8_t *data, uint8_t len);
+int can_get_isotp_message(uint8_t *payload, const uint16_t payload_size, uint16_t *out_size);
 uint32_t can_get_timestamp_ms ( void );
 
 #endif

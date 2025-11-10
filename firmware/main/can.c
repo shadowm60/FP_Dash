@@ -146,6 +146,17 @@ static void can_process_task(void *arg) {
 }
 
 
+void can_send_isotp_message( uint8_t *data, uint8_t len) {
+    //ESP_LOGI(TAG, "can_send_isotp_message");
+    isotp_send(&g_link, data, len);
+}
+
+int can_get_isotp_message(uint8_t *payload, const uint16_t payload_size, uint16_t *out_size) {
+    int ret;
+    ret = isotp_receive(&g_link, payload, payload_size, out_size);
+    return ret;
+}
+
 void init_can( void ) {
     tx_task_queue = xQueueCreate(RX_QUEUE_SIZE, sizeof(twai_message_t));
     rx_task_queue = xQueueCreate(TX_QUEUE_SIZE, sizeof(twai_message_t));
@@ -179,6 +190,7 @@ void init_can_tasks(void) {
     isotp_init_link(&g_link, TESTER_CAN_ID,
                     g_isotpSendBuf, sizeof(g_isotpSendBuf), 
 					g_isotpRecvBuf, sizeof(g_isotpRecvBuf));
+    ESP_LOGI(TAG, "ISOTP Init done");
 
     
 }
