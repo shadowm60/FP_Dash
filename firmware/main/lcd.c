@@ -15,6 +15,7 @@ static void lvgl_port_task(void *arg)
     uint32_t time_till_next_ms = 0;
     while (1) {
         _lock_acquire(&lvgl_api_lock);
+        ui_tick(); //for ui 
         time_till_next_ms = lv_timer_handler();
         _lock_release(&lvgl_api_lock);
         // in case of triggering a task watch dog time out
@@ -33,12 +34,15 @@ static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_
     return false;
 }
 
-
+#define TP_DEBUG
 static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     uint16_t touchpad_x[1] = {0};
     uint16_t touchpad_y[1] = {0};
     uint8_t touchpad_cnt = 0;
+#ifdef TP_DEBUG 
+    static uint8_t last_state = LV_INDEV_STATE_RELEASED;
+#endif
 
     esp_lcd_touch_handle_t touch_pad = lv_indev_get_user_data(indev);
     esp_lcd_touch_read_data(touch_pad);
@@ -49,9 +53,20 @@ static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
         data->point.x = touchpad_x[0];
         data->point.y = touchpad_y[0];
         data->state = LV_INDEV_STATE_PRESSED;
-        //ESP_LOGI(TAG, "LV_INDEV_STATE_PRESSED");
+#ifdef TP_DEBUG        
+        if (last_state == LV_INDEV_STATE_RELEASED) {
+            last_state = LV_INDEV_STATE_PRESSED;
+            ESP_LOGI(TAG, "LV_INDEV_STATE_PRESSED x: %d y: %d", data->point.x, data->point.y);  
+        }
+#endif
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
+#ifdef TP_DEBUG        
+        if (last_state == LV_INDEV_STATE_PRESSED) {
+            last_state = LV_INDEV_STATE_RELEASED;
+            ESP_LOGI(TAG, "LV_INDEV_STATE_RELEASED");  
+        }
+#endif        
         //ESP_LOGI(TAG, "LV_INDEV_STATE_RELEASED");
     }
 }
@@ -88,7 +103,8 @@ static void lvgl_port_update_callback(lv_display_t *disp)
 
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    lvgl_port_update_callback(disp);
+    //process screen rotation if tilt sensor is used
+    //lvgl_port_update_callback(disp);
     esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
     int offsetx1 = area->x1;
     int offsetx2 = area->x2;
@@ -211,10 +227,14 @@ void setup_LCD_Panel( void ) {
         .y_max = LCD_V_RES,
         .rst_gpio_num = -1,
         .int_gpio_num = 36, //AlMi todo: check this
+        .levels = {
+            .reset = 0,
+            .interrupt = 0,
+        },
         .flags = {
             .swap_xy = 0,
-            .mirror_x = 0,
-            .mirror_y = CONFIG_LCD_MIRROR_Y,
+            .mirror_x = CONFIG_LCD_MIRROR,
+            .mirror_y = 0,
         },
     };
     esp_lcd_touch_handle_t tp = NULL;
@@ -229,13 +249,17 @@ void setup_LCD_Panel( void ) {
     lv_indev_set_user_data(indev, tp);
     lv_indev_set_read_cb(indev, lvgl_touch_cb);
 
+    //init ui
+    ui_init();
+
     ESP_LOGI(TAG, "Create LVGL task");
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
-
+#ifdef DEMO
     ESP_LOGI(TAG, "Display LVGL Meter Widget");
     // Lock the mutex due to the LVGL APIs are not thread-safe
     _lock_acquire(&lvgl_api_lock);
     example_lvgl_demo_ui(display);
     _lock_release(&lvgl_api_lock);
+#endif
 
 }

@@ -19,6 +19,8 @@
 #include "lvgl.h"
 #include "esp_lcd_touch_xpt2046.h"
 
+#include "ui.h"
+
 
 /*********** LCD data ********************/
 #define LCD_H_RES                  240
@@ -37,7 +39,7 @@
 #define LVGL_TASK_PRIORITY     2
 #define LVGL_TASK_STACK_SIZE   (4 * 1024)
 #define LVGL_TASK_PRIORITY     2
-#define CONFIG_LCD_MIRROR_Y    1
+#define CONFIG_LCD_MIRROR      1
 
 /*********** GPIO initi  *****************/
 #define BL_PIN_NUM_BK_LIGHT        27
