@@ -1,10 +1,10 @@
 #include "lcd.h"
+#include "ts_calib.h"
 
 static const char *TAG = "FP_Dash_lcd";
 
-extern void example_lvgl_demo_ui(lv_disp_t *disp);
-
-
+//extern void example_lvgl_demo_ui(lv_disp_t *disp);
+extern void gui_handler_store_last_point(uint16_t x, uint16_t y );
 
 // LVGL library is not thread-safe, this example will call LVGL APIs from different tasks, so use a mutex to protect it
 static _lock_t lvgl_api_lock;
@@ -34,15 +34,16 @@ static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_
     return false;
 }
 
-#define TP_DEBUG
+
+CalibrationMatrix calib_matrix;
+
+
 static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     uint16_t touchpad_x[1] = {0};
     uint16_t touchpad_y[1] = {0};
     uint8_t touchpad_cnt = 0;
-#ifdef TP_DEBUG 
-    static uint8_t last_state = LV_INDEV_STATE_RELEASED;
-#endif
+
 
     esp_lcd_touch_handle_t touch_pad = lv_indev_get_user_data(indev);
     esp_lcd_touch_read_data(touch_pad);
@@ -50,23 +51,17 @@ static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
     bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_pad, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
 
     if (touchpad_pressed && touchpad_cnt > 0) {
-        data->point.x = touchpad_x[0];
-        data->point.y = touchpad_y[0];
+        //data->point.x = touchpad_x[0];
+        //data->point.y = touchpad_y[0];
+        data->point.x = calib_matrix.a * touchpad_x[0] + calib_matrix.b * touchpad_y[0] + calib_matrix.c;
+        data->point.y = calib_matrix.d * touchpad_x[0] + calib_matrix.e * touchpad_y[0] + calib_matrix.f;
+
         data->state = LV_INDEV_STATE_PRESSED;
-#ifdef TP_DEBUG        
-        if (last_state == LV_INDEV_STATE_RELEASED) {
-            last_state = LV_INDEV_STATE_PRESSED;
-            ESP_LOGI(TAG, "LV_INDEV_STATE_PRESSED x: %d y: %d", data->point.x, data->point.y);  
-        }
-#endif
+        gui_handler_store_last_point(touchpad_x[0], touchpad_y[0]);
+
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
-#ifdef TP_DEBUG        
-        if (last_state == LV_INDEV_STATE_PRESSED) {
-            last_state = LV_INDEV_STATE_RELEASED;
-            ESP_LOGI(TAG, "LV_INDEV_STATE_RELEASED");  
-        }
-#endif        
+     
         //ESP_LOGI(TAG, "LV_INDEV_STATE_RELEASED");
     }
 }
@@ -251,6 +246,10 @@ void setup_LCD_Panel( void ) {
 
     //init ui
     ui_init();
+
+    //todo: for now we calibrate it manually! we need to automate this!
+    ts_calib_init();
+    ts_calib_get(&calib_matrix);
 
     ESP_LOGI(TAG, "Create LVGL task");
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);

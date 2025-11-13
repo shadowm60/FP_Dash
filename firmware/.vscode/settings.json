@@ -21,7 +21,8 @@
     "esp_err.h": "c",
     "cstdlib": "c",
     "obd_handler_types.h": "c",
-    "esp_log.h": "c"
+    "esp_log.h": "c",
+    "random": "c"
   },
   "idf.portWin": "COM7",
   "idf.flashType": "UART",
