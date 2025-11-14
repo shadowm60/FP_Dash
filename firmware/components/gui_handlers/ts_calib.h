@@ -8,8 +8,9 @@ typedef struct {
 } CalibrationPoint;
 
 typedef struct {
-    float a, b, c;
-    float d, e, f;
+    int32_t a, b, c;
+    int32_t d, e, f;
+    int32_t scale;
 } CalibrationMatrix;
 
 CalibrationMatrix compute_affine_matrix(const CalibrationPoint *points, int count);

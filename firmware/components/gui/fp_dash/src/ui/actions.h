@@ -13,6 +13,15 @@ extern void action_calib_handle_top_right(lv_event_t * e);
 extern void action_calib_handler_bottom_left(lv_event_t * e);
 extern void action_calib_handle_bottom_right(lv_event_t * e);
 extern void action_calib_handler_center(lv_event_t * e);
+extern void action_read_dtcs_start_action(lv_event_t * e);
+extern void action_clear_dtcs_clear_start(lv_event_t * e);
+extern void action_read_dtcs_screen_selected(lv_event_t * e);
+extern void action_clear_dtcs_screen_selected(lv_event_t * e);
+extern void action_live_data_screen_selected(lv_event_t * e);
+extern void action_freez_frame_screen_selected(lv_event_t * e);
+extern void action_settings_screen_selected(lv_event_t * e);
+extern void action_system_screen_selected(lv_event_t * e);
+extern void action_gui_handler_gesture(lv_event_t * e);
 
 
 #ifdef __cplusplus

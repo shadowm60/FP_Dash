@@ -35,7 +35,7 @@ static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_
 }
 
 
-CalibrationMatrix calib_matrix;
+extern CalibrationMatrix calib_matrix_nvm;
 
 
 static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
@@ -53,11 +53,16 @@ static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
     if (touchpad_pressed && touchpad_cnt > 0) {
         //data->point.x = touchpad_x[0];
         //data->point.y = touchpad_y[0];
-        data->point.x = calib_matrix.a * touchpad_x[0] + calib_matrix.b * touchpad_y[0] + calib_matrix.c;
-        data->point.y = calib_matrix.d * touchpad_x[0] + calib_matrix.e * touchpad_y[0] + calib_matrix.f;
+
+        int32_t x = touchpad_x[0];
+        int32_t y = touchpad_y[0];
+
+        data->point.x = (calib_matrix_nvm.a * x + calib_matrix_nvm.b * y + calib_matrix_nvm.c) / calib_matrix_nvm.scale;
+        data->point.y = (calib_matrix_nvm.d * x + calib_matrix_nvm.e * y + calib_matrix_nvm.f) / calib_matrix_nvm.scale;
 
         data->state = LV_INDEV_STATE_PRESSED;
         gui_handler_store_last_point(touchpad_x[0], touchpad_y[0]);
+        ESP_LOGI(TAG, "TP: %d %d gui: %d %d",touchpad_x[0],touchpad_y[0],data->point.x, data->point.y);
 
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
@@ -249,7 +254,10 @@ void setup_LCD_Panel( void ) {
 
     //todo: for now we calibrate it manually! we need to automate this!
     ts_calib_init();
-    ts_calib_get(&calib_matrix);
+    ESP_LOGI(TAG, "TS_CALIB: a=%d, b=%d, c=%d, d=%d, e=%d, f=%d", calib_matrix_nvm.a, calib_matrix_nvm.b, calib_matrix_nvm.c, calib_matrix_nvm.d, calib_matrix_nvm.e, calib_matrix_nvm.f);
+
+    //since we have calibration we should start with main screen
+    //loadScreen(SCREEN_ID_STARTUP_SCREEN);
 
     ESP_LOGI(TAG, "Create LVGL task");
     xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);

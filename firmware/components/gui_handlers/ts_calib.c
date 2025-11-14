@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <math.h>
 #include "ts_calib.h"
 
 
@@ -49,25 +50,69 @@ CalibrationMatrix compute_affine_matrix(const CalibrationPoint *points, int coun
               + sum_ty * (sum_tx * sum_tx_ty - sum_tx_tx * sum_ty);
 
     CalibrationMatrix m = {0};
+    const int32_t scale = 10000;
 
-    if (det != 0) {
+    if (fabsf(det) > 1e-6f) {
         float inv_det = 1.0f / det;
 
-        m.a = inv_det * (count * sum_tx_sx - sum_tx * sum_sx);
-        m.b = inv_det * (count * sum_ty_sx - sum_ty * sum_sx);
-        m.c = inv_det * (sum_tx * sum_ty_sx - sum_ty * sum_tx_sx);
+        float a_f = inv_det * (count * sum_tx_sx - sum_tx * sum_sx);
+        float b_f = inv_det * (count * sum_ty_sx - sum_ty * sum_sx);
+        float c_f = inv_det * (sum_tx * sum_ty_sx - sum_ty * sum_tx_sx);
 
-        m.d = inv_det * (count * sum_tx_sy - sum_tx * sum_sy);
-        m.e = inv_det * (count * sum_ty_sy - sum_ty * sum_sy);
-        m.f = inv_det * (sum_tx * sum_ty_sy - sum_ty * sum_tx_sy);
+        float d_f = inv_det * (count * sum_tx_sy - sum_tx * sum_sy);
+        float e_f = inv_det * (count * sum_ty_sy - sum_ty * sum_sy);
+        float f_f = inv_det * (sum_tx * sum_ty_sy - sum_ty * sum_tx_sy);
+
+        m.a = (int32_t)(a_f * scale);
+        m.b = (int32_t)(b_f * scale);
+        m.c = (int32_t)(c_f * scale);
+        m.d = (int32_t)(d_f * scale);
+        m.e = (int32_t)(e_f * scale);
+        m.f = (int32_t)(f_f * scale);
+        m.scale = scale;
     }
 
     return m;
 }
 
 
+CalibrationMatrix compute_affine_3pt(const CalibrationPoint *p) {
+    CalibrationMatrix m = {0};
+    const int32_t scale = 10000;
+
+    float x1 = p[0].touch_x, y1 = p[0].touch_y;
+    float x2 = p[1].touch_x, y2 = p[1].touch_y;
+    float x3 = p[2].touch_x, y3 = p[2].touch_y;
+
+    float u1 = p[0].screen_x, v1 = p[0].screen_y;
+    float u2 = p[1].screen_x, v2 = p[1].screen_y;
+    float u3 = p[2].screen_x, v3 = p[2].screen_y;
+
+    float det = (x1*(y2 - y3) - x2*(y1 - y3) + x3*(y1 - y2));
+    if (fabsf(det) < 1e-6f) return m;
+
+    float a = ((u1*(y2 - y3) - u2*(y1 - y3) + u3*(y1 - y2)) / det);
+    float b = ((u1*(x3 - x2) + u2*(x1 - x3) + u3*(x2 - x1)) / det);
+    float c = ((u1*(x2*y3 - x3*y2) - u2*(x1*y3 - x3*y1) + u3*(x1*y2 - x2*y1)) / det);
+
+    float d = ((v1*(y2 - y3) - v2*(y1 - y3) + v3*(y1 - y2)) / det);
+    float e = ((v1*(x3 - x2) + v2*(x1 - x3) + v3*(x2 - x1)) / det);
+    float f = ((v1*(x2*y3 - x3*y2) - v2*(x1*y3 - x3*y1) + v3*(x1*y2 - x2*y1)) / det);
+
+    m.a = (int32_t)(a * scale);
+    m.b = (int32_t)(b * scale);
+    m.c = (int32_t)(c * scale);
+    m.d = (int32_t)(d * scale);
+    m.e = (int32_t)(e * scale);
+    m.f = (int32_t)(f * scale);
+    m.scale = scale;
+
+    return m;
+}
+
 void ts_calib_init(void) {
-     calib_matrix_nvm = compute_affine_matrix(calib_points, 5);
+     //calib_matrix_nvm = compute_affine_matrix(calib_points, 5);
+     calib_matrix_nvm = compute_affine_3pt(calib_points);
 }
 
 void ts_calib_get(CalibrationMatrix *ptr) {
