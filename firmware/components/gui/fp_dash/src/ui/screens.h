@@ -20,6 +20,11 @@ typedef struct _objects_t {
     lv_obj_t *freez_frame_screen;
     lv_obj_t *settings_screen;
     lv_obj_t *system_screen;
+    lv_obj_t *fixed_brightness;
+    lv_obj_t *use_sd;
+    lv_obj_t *log_engine_param;
+    lv_obj_t *ts_is_calibrated;
+    lv_obj_t *use_status_led;
     lv_obj_t *obj0;
     lv_obj_t *p_top_left;
     lv_obj_t *p_top_right;
@@ -70,7 +75,9 @@ typedef struct _objects_t {
     lv_obj_t *obj7;
     lv_obj_t *obj8;
     lv_obj_t *obj9;
+    lv_obj_t *data_source_select;
     lv_obj_t *obj10;
+    lv_obj_t *brightness_slide;
 } objects_t;
 
 extern objects_t objects;

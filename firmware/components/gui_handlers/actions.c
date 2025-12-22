@@ -199,3 +199,47 @@ void action_gui_handler_gesture(lv_event_t * e) {
         }
     }
 }
+
+
+/* scren handlers */
+void action_fixed_brightness_clicked(lv_event_t * e) {
+    /* not used */
+}
+
+void action_checked_fixed_brightness(lv_event_t * e) {
+    /* not used */
+}
+
+void action_unchecked_fixed_brightness(lv_event_t * e) {
+    /* not used */
+}
+
+void action_fixed_brightess(lv_event_t * e) {
+    /* user_data = 0 -> unchecked */
+    /* user_data = 1 -> checked  */
+}
+
+void action_use_sd_logging(lv_event_t * e) {
+    /* user_data = 0 -> unchceked */
+    /* user_data = 1 -> checked  */
+}
+
+void action_log_eng_params(lv_event_t * e) {
+
+}
+
+void action_use_led_status(lv_event_t * e) {
+
+}
+
+void action_ts_is_calibrated(lv_event_t * e) {
+
+}
+
+void action_brightness_slider(lv_event_t * e) {
+    /* we need to get object and get the data from it  lv_obj_t *brightness_slide; */
+}
+
+void action_dropdown_value_changed(lv_event_t * e) {
+    /* user_data = 0 -> source select value changed! lv_obj_t *data_source_select; */
+}

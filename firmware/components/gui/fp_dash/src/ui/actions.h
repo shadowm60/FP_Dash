@@ -22,6 +22,16 @@ extern void action_freez_frame_screen_selected(lv_event_t * e);
 extern void action_settings_screen_selected(lv_event_t * e);
 extern void action_system_screen_selected(lv_event_t * e);
 extern void action_gui_handler_gesture(lv_event_t * e);
+extern void action_fixed_brightness_clicked(lv_event_t * e);
+extern void action_checked_fixed_brightness(lv_event_t * e);
+extern void action_unchecked_fixed_brightness(lv_event_t * e);
+extern void action_fixed_brightess(lv_event_t * e);
+extern void action_use_sd_logging(lv_event_t * e);
+extern void action_log_eng_params(lv_event_t * e);
+extern void action_use_led_status(lv_event_t * e);
+extern void action_ts_is_calibrated(lv_event_t * e);
+extern void action_brightness_slider(lv_event_t * e);
+extern void action_dropdown_value_changed(lv_event_t * e);
 
 
 #ifdef __cplusplus

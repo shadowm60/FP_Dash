@@ -14,6 +14,76 @@ objects_t objects;
 lv_obj_t *tick_value_change_obj;
 uint32_t active_theme_index = 0;
 
+static void event_handler_unchecked_cb_system_screen_fixed_brightness(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (!lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_fixed_brightess(e);
+    }
+}
+
+static void event_handler_checked_cb_system_screen_fixed_brightness(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_fixed_brightess(e);
+    }
+}
+
+static void event_handler_checked_cb_system_screen_use_sd(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_use_sd_logging(e);
+    }
+}
+
+static void event_handler_unchecked_cb_system_screen_use_sd(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (!lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_use_sd_logging(e);
+    }
+}
+
+static void event_handler_checked_cb_system_screen_log_engine_param(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_log_eng_params(e);
+    }
+}
+
+static void event_handler_unchecked_cb_system_screen_log_engine_param(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (!lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_log_eng_params(e);
+    }
+}
+
+static void event_handler_checked_cb_system_screen_ts_is_calibrated(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_ts_is_calibrated(e);
+    }
+}
+
+static void event_handler_unchecked_cb_system_screen_ts_is_calibrated(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (!lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_ts_is_calibrated(e);
+    }
+}
+
+static void event_handler_checked_cb_system_screen_use_status_led(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_use_led_status(e);
+    }
+}
+
+static void event_handler_unchecked_cb_system_screen_use_status_led(lv_event_t *e) {
+    lv_obj_t *ta = lv_event_get_target(e);
+    if (!lv_obj_has_state(ta, LV_STATE_CHECKED)) {
+        action_use_led_status(e);
+    }
+}
+
 void create_screen_main_calib() {
     lv_obj_t *obj = lv_obj_create(0);
     objects.main_calib = obj;
@@ -653,7 +723,7 @@ void create_screen_startup_screen() {
             // clear_dtcs_button
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.clear_dtcs_button = obj;
-            lv_obj_set_pos(obj, 120, 92);
+            lv_obj_set_pos(obj, 130, 92);
             lv_obj_set_size(obj, 100, 50);
             lv_obj_add_event_cb(obj, action_clear_dtcs_screen_selected, LV_EVENT_PRESSED, (void *)0);
             {
@@ -707,7 +777,7 @@ void create_screen_startup_screen() {
             // freez_frame_data
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.freez_frame_data = obj;
-            lv_obj_set_pos(obj, 120, 160);
+            lv_obj_set_pos(obj, 130, 160);
             lv_obj_set_size(obj, 100, 50);
             lv_obj_add_event_cb(obj, action_freez_frame_screen_selected, LV_EVENT_PRESSED, (void *)0);
             {
@@ -725,7 +795,7 @@ void create_screen_startup_screen() {
             // system_button
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.system_button = obj;
-            lv_obj_set_pos(obj, 121, 226);
+            lv_obj_set_pos(obj, 130, 226);
             lv_obj_set_size(obj, 100, 50);
             lv_obj_add_event_cb(obj, action_system_screen_selected, LV_EVENT_PRESSED, (void *)0);
             {
@@ -802,6 +872,7 @@ void create_screen_read_dtcs_screen() {
             lv_textarea_set_text(obj, "P0048 - test");
             lv_textarea_set_one_line(obj, false);
             lv_textarea_set_password_mode(obj, false);
+            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
         }
     }
     
@@ -848,6 +919,7 @@ void create_screen_clear_dtcs_screen() {
             lv_textarea_set_text(obj, "Clearing codes ...");
             lv_textarea_set_one_line(obj, false);
             lv_textarea_set_password_mode(obj, false);
+            lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
         }
     }
     
@@ -919,10 +991,38 @@ void create_screen_settings_screen() {
         {
             lv_obj_t *obj = lv_label_create(parent_obj);
             objects.obj9 = obj;
-            lv_obj_set_pos(obj, 48, 13);
+            lv_obj_set_pos(obj, 14, 21);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text(obj, "settings_screen");
+            lv_label_set_text(obj, "Data Source:");
+        }
+        {
+            // data_source_select
+            lv_obj_t *obj = lv_dropdown_create(parent_obj);
+            objects.data_source_select = obj;
+            lv_obj_set_pos(obj, 120, 11);
+            lv_obj_set_size(obj, 109, LV_SIZE_CONTENT);
+            lv_dropdown_set_options(obj, "OBD2\nRusEFI\nHaltech");
+            lv_dropdown_set_selected(obj, 0);
+            lv_obj_add_event_cb(obj, action_dropdown_value_changed, LV_EVENT_VALUE_CHANGED, (void *)0);
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.obj10 = obj;
+            lv_obj_set_pos(obj, 14, 64);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text(obj, "Base ID:");
+        }
+        {
+            lv_obj_t *obj = lv_spinbox_create(parent_obj);
+            lv_obj_set_pos(obj, 120, 60);
+            lv_obj_set_size(obj, 109, 30);
+            lv_spinbox_set_digit_format(obj, 5, 0);
+            lv_spinbox_set_range(obj, 0, 99999);
+            lv_spinbox_set_rollover(obj, false);
+            lv_spinbox_set_step(obj, 1);
+            lv_spinbox_set_value(obj, 512);
         }
     }
     
@@ -942,12 +1042,68 @@ void create_screen_system_screen() {
     {
         lv_obj_t *parent_obj = obj;
         {
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.obj10 = obj;
-            lv_obj_set_pos(obj, 48, 13);
+            // fixed_brightness
+            lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.fixed_brightness = obj;
+            lv_obj_set_pos(obj, 13, 11);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_checkbox_set_text(obj, "Fixed Brightness");
+            lv_obj_add_event_cb(obj, event_handler_unchecked_cb_system_screen_fixed_brightness, LV_EVENT_VALUE_CHANGED, (void *)0);
+            lv_obj_add_event_cb(obj, event_handler_checked_cb_system_screen_fixed_brightness, LV_EVENT_VALUE_CHANGED, (void *)1);
             lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text(obj, "system_screen");
+        }
+        {
+            // brightness_slide
+            lv_obj_t *obj = lv_slider_create(parent_obj);
+            objects.brightness_slide = obj;
+            lv_obj_set_pos(obj, 13, 46);
+            lv_obj_set_size(obj, 213, 10);
+            lv_slider_set_value(obj, 25, LV_ANIM_OFF);
+            lv_obj_add_event_cb(obj, action_brightness_slider, LV_EVENT_RELEASED, (void *)0);
+        }
+        {
+            // use_sd
+            lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.use_sd = obj;
+            lv_obj_set_pos(obj, 13, 72);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_checkbox_set_text(obj, "Use SD_Logging");
+            lv_obj_add_event_cb(obj, event_handler_checked_cb_system_screen_use_sd, LV_EVENT_VALUE_CHANGED, (void *)1);
+            lv_obj_add_event_cb(obj, event_handler_unchecked_cb_system_screen_use_sd, LV_EVENT_VALUE_CHANGED, (void *)0);
+            lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+        {
+            // log_engine_param
+            lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.log_engine_param = obj;
+            lv_obj_set_pos(obj, 13, 110);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_checkbox_set_text(obj, "Log Engine Parameters");
+            lv_obj_add_event_cb(obj, event_handler_checked_cb_system_screen_log_engine_param, LV_EVENT_VALUE_CHANGED, (void *)1);
+            lv_obj_add_event_cb(obj, event_handler_unchecked_cb_system_screen_log_engine_param, LV_EVENT_VALUE_CHANGED, (void *)0);
+            lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+        {
+            // ts_is_calibrated
+            lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.ts_is_calibrated = obj;
+            lv_obj_set_pos(obj, 13, 285);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_checkbox_set_text(obj, "TS is calibrated");
+            lv_obj_add_event_cb(obj, event_handler_checked_cb_system_screen_ts_is_calibrated, LV_EVENT_VALUE_CHANGED, (void *)1);
+            lv_obj_add_event_cb(obj, event_handler_unchecked_cb_system_screen_ts_is_calibrated, LV_EVENT_VALUE_CHANGED, (void *)0);
+            lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+        {
+            // use_status_led
+            lv_obj_t *obj = lv_checkbox_create(parent_obj);
+            objects.use_status_led = obj;
+            lv_obj_set_pos(obj, 13, 150);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_checkbox_set_text(obj, "Use LED status");
+            lv_obj_add_event_cb(obj, event_handler_checked_cb_system_screen_use_status_led, LV_EVENT_VALUE_CHANGED, (void *)1);
+            lv_obj_add_event_cb(obj, event_handler_unchecked_cb_system_screen_use_status_led, LV_EVENT_VALUE_CHANGED, (void *)0);
+            lv_obj_set_style_text_color(obj, lv_color_hex(0xff00ff00), LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
     

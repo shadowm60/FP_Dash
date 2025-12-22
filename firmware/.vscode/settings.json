@@ -22,7 +22,8 @@
     "cstdlib": "c",
     "obd_handler_types.h": "c",
     "esp_log.h": "c",
-    "random": "c"
+    "random": "c",
+    "nvs_handler.h": "c"
   },
   "idf.portWin": "COM7",
   "idf.flashType": "UART",
