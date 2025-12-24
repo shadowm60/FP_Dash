@@ -54,7 +54,29 @@
 #define LCD_PIN_NUM_TOUCH_CS       15
 #define PIN_NUM_TOUCH_CS           33
 
+/***** CAN hw settings  ********/
+#define HW_TX_GPIO_NUM     22
+#define HW_RX_GPIO_NUM     21
+
 #elif (TARGET == BOARD_5)
+/****
+ * todo: check config
+ * CONFIG_FREERTOS_HZ=1000
+ * CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+ * CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+ * CONFIG_ESPTOOLPY_FLASHFREQ_120M=y [Need to be consistent with PSRAM]
+ * CONFIG_SPIRAM_MODE_OCT=y
+ * CONFIG_IDF_EXPERIMENTAL_FEATURES=y and CONFIG_SPIRAM_SPEED_120M=y [Need to be consistent with FLASH]
+ * CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+ * CONFIG_SPIRAM_RODATA=y
+ * CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+ * CONFIG_COMPILER_OPTIMIZATION_PERF=y
+ * #The following LVGL configuration items are helpful for frame rate improvement (LVGL v8.3):
+ * #define LV_MEM_CUSTOM 1 or CONFIG_LV_MEM_CUSTOM=y
+ * #define LV_MEMCPY_MEMSET_STD 1 or CONFIG_LV_MEMCPY_MEMSET_STD=y
+ * #define LV_ATTRIBUTE_FAST_MEM IRAM_ATTR or CONFIG_LV_ATTRIBUTE_FAST_MEM=y
+ */
+
 /*********** SCREEN Params ********************/
 #define LCD_H_RES                  800
 #define LCD_V_RES                  480
@@ -63,6 +85,7 @@
 #define LCD_BIT_PER_PIXEL           (16)
 #define LCD_RGB_BIT_PER_PIXEL       (16)
 #define LCD_RGB_DATA_WIDTH          (16)
+#define CONFIG_LCD_RGB_BOUNCE_BUFFER_HEIGHT (10) //in configsdk in the example
 #define LCD_RGB_BOUNCE_BUFFER_SIZE  (LCD_H_RES * CONFIG_LCD_RGB_BOUNCE_BUFFER_HEIGHT)
 
 #define LVGL_DRAW_BUF_LINES    20 // number of display lines in each draw buffer
@@ -76,6 +99,7 @@
 #define CONFIG_LCD_MIRROR      1
 
 /*********** SCREEN GPIO  *********************/
+#define LCD_IO_RGB_DISP         (-1)             // -1 if not used
 #define LCD_IO_RGB_VSYNC        (GPIO_NUM_3)
 #define LCD_IO_RGB_HSYNC        (GPIO_NUM_46)
 #define LCD_IO_RGB_DE           (GPIO_NUM_5)
@@ -114,6 +138,17 @@
 #define LCD_PIN_NUM_TOUCH_RST       (-1) 
 #define LCD_PIN_NUM_TOUCH_INT       (-1) 
 #define CONFIG_LCD_TOUCH_CONTROLLER_GT911
+
+/*********** LVGL config**************/
+#define LVGL_PORT_LCD_RGB_BUFFER_NUMS   (1)
+#define LVGL_PORT_FULL_REFRESH          (0)
+#define LVGL_PORT_DIRECT_MODE           (0)
+#define CONFIG_LVGL_PORT_ROTATION_DEGREE 0
+#define EXAMPLE_LVGL_PORT_ROTATION_DEGREE  (CONFIG_LVGL_PORT_ROTATION_DEGREE)
+
+/***** CAN hw settings  ********/
+#define HW_TX_GPIO_NUM     15
+#define HW_RX_GPIO_NUM     16
 
 #elif (TARGET == BOARD_7)
 /*********** SCREEN Params ********************/

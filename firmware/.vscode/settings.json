@@ -4,17 +4,17 @@
   "idf.pythonInstallPath": "c:\\UserData\\esp\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
   "idf.openOcdConfigs": [
     "interface/ftdi/esp_ftdi.cfg",
-    "target/esp32.cfg"
+    "target/esp32s3.cfg"
   ],
   "idf.toolsPathWin": "c:\\UserData\\esp\\.espressif",
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32"
+    "IDF_TARGET": "esp32s3"
   },
   "clangd.path": "c:\\UserData\\esp\\.espressif\\tools\\esp-clang\\esp-19.1.2_20250312\\esp-clang\\bin\\clangd.exe",
   "clangd.arguments": [
     "--background-index",
-    "--query-driver=c:\\UserData\\esp\\.espressif\\tools\\xtensa-esp-elf\\esp-14.2.0_20241119\\xtensa-esp-elf\\bin\\xtensa-esp32-elf-gcc.exe",
-    "--compile-commands-dir=${workspaceFolder}\\build"
+    "--query-driver=c:\\UserData\\esp\\.espressif\\tools\\xtensa-esp-elf\\esp-14.2.0_20241119\\xtensa-esp-elf\\bin\\xtensa-esp32s3-elf-gcc.exe",
+    "--compile-commands-dir=c:\\UserData\\git\\FP_Dash\\firmware\\build"
   ],
   "files.associations": {
     "freertos.h": "c",

@@ -1,3 +1,3 @@
-idf_component_register(SRCS "can.c" "main.c" "lcd.c" "led.c"
+idf_component_register(SRCS "main.c" 
                     INCLUDE_DIRS "."
-                    REQUIRES "gui" "obd_handler" "driver" "gui_handlers")
+                    REQUIRES "gui" "lcd" "can" "led" "obd_handler" "driver" "gui_handlers")

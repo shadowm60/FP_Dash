@@ -38,15 +38,17 @@ dependencies:
       type: service
     version: 1.2.0
   espressif/esp_lcd_touch:
-    component_hash: 779b4ba2464a3ae85681e4b860caa5fdc35801458c23f3039ee761bae7f442a4
-    dependencies:
-    - name: idf
-      require: private
-      version: '>=4.4.2'
+    dependencies: []
     source:
-      registry_url: https://components.espressif.com
-      type: service
+      path: C:\UserData\git\FP_Dash\firmware\components\espressif__esp_lcd_touch
+      type: local
     version: 1.1.2
+  espressif/esp_lcd_touch_gt911:
+    dependencies: []
+    source:
+      path: C:\UserData\git\FP_Dash\firmware\components\espressif__esp_lcd_touch_gt911
+      type: local
+    version: 1.1.1~1
   idf:
     source:
       type: idf
@@ -61,7 +63,10 @@ dependencies:
 direct_dependencies:
 - atanisoft/esp_lcd_touch_xpt2046
 - espressif/esp_lcd_ili9341
+- espressif/esp_lcd_touch
+- espressif/esp_lcd_touch_gt911
+- idf
 - lvgl/lvgl
-manifest_hash: 7a54bcc9f53864c5e85fdaa344a8cd26f30e4253d6af8ffbceb09154c5c07e3a
-target: esp32
+manifest_hash: 4af3ac2f23ee275c7a1bc868af37487aa9e1c6f2ac1842a236ae36b7eee10d7e
+target: esp32s3
 version: 2.0.0

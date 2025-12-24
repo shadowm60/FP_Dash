@@ -25,6 +25,7 @@
     #include "esp_lcd_panel_rgb.h"
     #include "esp_lcd_touch_gt911.h"
 #elif (TARGET == BOARD_7)
+#endif
 
 
 #include "lvgl.h"

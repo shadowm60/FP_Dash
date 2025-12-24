@@ -9,9 +9,10 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/twai.h"
+#include "hw_config.h"
 
-#define TX_GPIO_NUM     22
-#define RX_GPIO_NUM     21
+#define TX_GPIO_NUM     HW_TX_GPIO_NUM
+#define RX_GPIO_NUM     HW_RX_GPIO_NUM
 
 #define RX_QUEUE_SIZE   10 //number of messages to be stored
 #define TX_QUEUE_SIZE   10 //number of messages to be stored

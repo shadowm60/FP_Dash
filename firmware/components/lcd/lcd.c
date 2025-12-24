@@ -1,13 +1,17 @@
 #include "lcd.h"
+#if (TARGET == BOARD_2_4)
 #include "ts_calib.h"
+#endif 
 
-static const char *TAG = "FP_Dash_lcd";
+static const char *TAG = "LCD";
 
 //extern void example_lvgl_demo_ui(lv_disp_t *disp);
 extern void gui_handler_store_last_point(uint16_t x, uint16_t y );
 
 // LVGL library is not thread-safe, this example will call LVGL APIs from different tasks, so use a mutex to protect it
 static _lock_t lvgl_api_lock;
+static SemaphoreHandle_t lvgl_mux;                       // LVGL mutex for synchronization
+static TaskHandle_t lvgl_task_handle = NULL;             // Handle for the LVGL task
 
 static void lvgl_port_task(void *arg)
 {
@@ -26,19 +30,19 @@ static void lvgl_port_task(void *arg)
     }
 }
 
-
+#if (TARGET == BOARD_2_4) 
+/* This callback is used to notify LVGL that a frame buffer has been successfully written to the display, allowing LVGL to release the buffer and prepare the next one. */
 static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
     lv_display_t *disp = (lv_display_t *)user_ctx;
     lv_display_flush_ready(disp);
     return false;
 }
+#endif
 
-
+#if (TARGET == BOARD_2_4) 
 extern CalibrationMatrix calib_matrix_nvm;
-
-
-static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
+static void lvgl_touch_2_4_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
     uint16_t touchpad_x[1] = {0};
     uint16_t touchpad_y[1] = {0};
@@ -70,8 +74,11 @@ static void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
         //ESP_LOGI(TAG, "LV_INDEV_STATE_RELEASED");
     }
 }
+#endif 
 
+#if (TARGET == BOARD_2_4) 
 /* Rotate display and touch, when rotated screen in LVGL. Called when driver parameters are updated. */
+/* process screen rotation if tilt sensor is used */
 static void lvgl_port_update_callback(lv_display_t *disp)
 {
     esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
@@ -100,7 +107,9 @@ static void lvgl_port_update_callback(lv_display_t *disp)
         break;
     }
 }
+#endif 
 
+#if (TARGET == BOARD_2_4) 
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
     //process screen rotation if tilt sensor is used
@@ -115,15 +124,87 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
     // copy a buffer's content to a specific area of the display
     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
 }
+#endif 
 
+#if (TARGET == BOARD_5)
+
+// VSYNC event callback function
+IRAM_ATTR static bool rgb_lcd_on_vsync_event(esp_lcd_panel_handle_t panel, const esp_lcd_rgb_panel_event_data_t *edata, void *user_ctx)
+{
+    BaseType_t need_yield = pdFALSE; // Flag to check if a yield is needed
+    // Notify that the current RGB frame buffer has been transmitted
+    xTaskNotifyFromISR(lvgl_task_handle, ULONG_MAX, eNoAction, &need_yield); // Notify the LVGL task
+
+    return (need_yield == pdTRUE); // Return whether a yield is needed
+}
+
+#if CONFIG_LCD_TOUCH_CONTROLLER_GT911
+/**
+ * @brief I2C master initialization
+ */
+static esp_err_t i2c_master_init(void)
+{
+    int i2c_master_port = I2C_MASTER_NUM;
+
+    i2c_config_t i2c_conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = I2C_MASTER_FREQ_HZ,
+    };
+
+    // Configure I2C parameters
+    i2c_param_config(i2c_master_port, &i2c_conf);
+
+    // Install I2C driver
+    return i2c_driver_install(i2c_master_port, i2c_conf.mode, 0, 0, 0);
+}
+
+void gpio_init(void)
+{
+    // Zero-initialize the config structure
+    gpio_config_t io_conf = {};
+    // Disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    // Bit mask of the pins, use GPIO4 here
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    // Set as input mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+
+    gpio_config(&io_conf);
+}
+
+// Reset the touch screen
+void waveshare_esp32_s3_touch_reset()
+{
+    uint8_t write_buf = 0x01;
+    i2c_master_write_to_device(I2C_MASTER_NUM, 0x24, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+
+    // Reset the touch screen. It is recommended to reset the touch screen before using it.
+    write_buf = 0x2C;
+    i2c_master_write_to_device(I2C_MASTER_NUM, 0x38, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    esp_rom_delay_us(100 * 1000);
+    gpio_set_level(GPIO_INPUT_IO_4, 0);
+    esp_rom_delay_us(100 * 1000);
+    write_buf = 0x2E;
+    i2c_master_write_to_device(I2C_MASTER_NUM, 0x38, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    esp_rom_delay_us(200 * 1000);
+}
+
+#endif
+
+#endif
 static void increase_lvgl_tick(void *arg)
 {
     /* Tell LVGL how many milliseconds has elapsed */
     lv_tick_inc(LVGL_TICK_PERIOD_MS);
 }
 
-void setup_LCD_Panel( void ) {
-#if (TARGET == BOARD_2_4)    
+
+static void setup_LCD_2_4( void ) {
+#if (TARGET == BOARD_2_4)  
     ESP_LOGI(TAG, "Turn off LCD backlight");
     gpio_config_t bk_gpio_config = {
         .mode = GPIO_MODE_OUTPUT,
@@ -248,7 +329,7 @@ void setup_LCD_Panel( void ) {
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_display(indev, display);
     lv_indev_set_user_data(indev, tp);
-    lv_indev_set_read_cb(indev, lvgl_touch_cb);
+    lv_indev_set_read_cb(indev, lvgl_touch_2_4_cb);
 
     //init ui
     ui_init();
@@ -269,7 +350,11 @@ void setup_LCD_Panel( void ) {
     example_lvgl_demo_ui(display);
     _lock_release(&lvgl_api_lock);
 #endif
-#elif (TARGET == BOARD_5)
+#endif
+}
+
+static void setup_LCD_5( void ) {
+#if (TARGET == BOARD_5)  
     ESP_LOGI(TAG, "Install RGB LCD 5 panel driver");
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_rgb_panel_config_t panel_config = {
@@ -291,7 +376,7 @@ void setup_LCD_Panel( void ) {
         .data_width = LCD_RGB_DATA_WIDTH,                    // Data width for RGB
         .bits_per_pixel = LCD_RGB_BIT_PER_PIXEL,             // Bits per pixel
         .num_fbs = LVGL_PORT_LCD_RGB_BUFFER_NUMS,                // Number of frame buffers
-        .bounce_buffer_size_px = EXAMPLE_RGB_BOUNCE_BUFFER_SIZE, // Bounce buffer size in pixels
+        .bounce_buffer_size_px = LCD_RGB_BOUNCE_BUFFER_SIZE, // Bounce buffer size in pixels
         .sram_trans_align = 4,                                   // SRAM transaction alignment
         .psram_trans_align = 64,                                 // PSRAM transaction alignment
         .hsync_gpio_num = LCD_IO_RGB_HSYNC,              // GPIO number for horizontal sync
@@ -360,11 +445,11 @@ void setup_LCD_Panel( void ) {
     };
     ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &tp_handle)); // Create new I2C GT911 touch controller
 
-    ESP_ERROR_CHECK(lvgl_port_init(panel_handle, tp_handle)); // Initialize LVGL with the panel and touch handles
+    //ESP_ERROR_CHECK(lvgl_port_init(panel_handle, tp_handle)); // Initialize LVGL with the panel and touch handles
 
     // Register callbacks for RGB panel events
     esp_lcd_rgb_panel_event_callbacks_t cbs = {
-#if EXAMPLE_RGB_BOUNCE_BUFFER_SIZE > 0
+#if LCD_RGB_BOUNCE_BUFFER_SIZE > 0
         .on_bounce_frame_finish = rgb_lcd_on_vsync_event, // Callback for bounce frame finish
 #else
         .on_vsync = rgb_lcd_on_vsync_event, // Callback for vertical sync
@@ -372,7 +457,47 @@ void setup_LCD_Panel( void ) {
     };
     ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, NULL)); // Register event callbacks
 
+    lv_init(); // Initialize LVGL
+    ESP_ERROR_CHECK(tick_init()); // Initialize the tick timer
+
+    lv_disp_t *disp = display_init(panel_handle); // Initialize the display
+    assert(disp); // Ensure the display initialization was successful
+    
+    if (tp_handle) {
+        lv_indev_t *indev = indev_init(tp_handle); // Initialize the touchpad input device
+        assert(indev); // Ensure the input device initialization was successful
+
+        // Set touch panel orientation based on rotation
+#if EXAMPLE_LVGL_PORT_ROTATION_90
+        esp_lcd_touch_set_swap_xy(tp_handle, true); // Swap X and Y coordinates
+        esp_lcd_touch_set_mirror_y(tp_handle, true); // Mirror Y coordinates
+#elif EXAMPLE_LVGL_PORT_ROTATION_180
+        esp_lcd_touch_set_mirror_x(tp_handle, true); // Mirror X coordinates
+        esp_lcd_touch_set_mirror_y(tp_handle, true); // Mirror Y coordinates
+#elif EXAMPLE_LVGL_PORT_ROTATION_270
+        esp_lcd_touch_set_swap_xy(tp_handle, true); // Swap X and Y coordinates
+        esp_lcd_touch_set_mirror_x(tp_handle, true); // Mirror X coordinates
+#endif
+    }
+
+    lvgl_mux = xSemaphoreCreateRecursiveMutex(); // Create a recursive mutex for LVGL
+
+    xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, &lvgl_task_handle);
+#endif
+}
+
+static void setup_LCD_7( void ) {
+#if (TARGET == BOARD_7)  
+#endif
+}
+
+void setup_LCD_Panel( void ) {
+#if (TARGET == BOARD_2_4)    
+    setup_LCD_2_4();
+#elif (TARGET == BOARD_5)
+    setup_LCD_5();
 #elif (TARGET == BOARD_7)
+    setup_LCD_7();
 #else
     #warning "Target selection invalid, lcd will not work"
 #endif
