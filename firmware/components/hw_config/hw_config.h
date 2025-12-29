@@ -138,6 +138,8 @@
 #define LCD_PIN_NUM_TOUCH_RST       (-1) 
 #define LCD_PIN_NUM_TOUCH_INT       (-1) 
 #define CONFIG_LCD_TOUCH_CONTROLLER_GT911
+#define GPIO_INPUT_IO_4    4
+#define GPIO_INPUT_PIN_SEL  1ULL<<GPIO_INPUT_IO_4
 
 /*********** LVGL config**************/
 #define LVGL_PORT_LCD_RGB_BUFFER_NUMS   (1)

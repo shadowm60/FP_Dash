@@ -138,7 +138,17 @@ IRAM_ATTR static bool rgb_lcd_on_vsync_event(esp_lcd_panel_handle_t panel, const
     return (need_yield == pdTRUE); // Return whether a yield is needed
 }
 
-#if CONFIG_LCD_TOUCH_CONTROLLER_GT911
+#ifdef CONFIG_LCD_TOUCH_CONTROLLER_GT911
+
+static void lvgl_touch_5inch_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    uint16_t touchpad_x[1] = {0};
+    uint16_t touchpad_y[1] = {0};
+    uint8_t touchpad_cnt = 0;
+
+    //todo
+}
+
 /**
  * @brief I2C master initialization
  */
@@ -353,12 +363,22 @@ static void setup_LCD_2_4( void ) {
 #endif
 }
 
-static void setup_LCD_5( void ) {
-#if (TARGET == BOARD_5)  
+static void setup_LCD_5(void)
+{
+#if (TARGET == BOARD_5)
+
+    ESP_LOGI(TAG, "Initialize LVGL library");
+    lv_init();
+
+    /* -----------------------------
+     * 1. Initialize RGB LCD panel
+     * ----------------------------- */
     ESP_LOGI(TAG, "Install RGB LCD 5 panel driver");
+
     esp_lcd_panel_handle_t panel_handle = NULL;
+
     esp_lcd_rgb_panel_config_t panel_config = {
-        .clk_src = LCD_CLK_SRC_DEFAULT, // Set the clock source for the panel
+        .clk_src = LCD_CLK_SRC_DEFAULT,
         .timings = {
             .pclk_hz = LCD_PIXEL_CLOCK_HZ,
             .h_res = LCD_H_RES,
@@ -373,116 +393,110 @@ static void setup_LCD_5( void ) {
                 .pclk_active_neg = 1,
             },
         },
-        .data_width = LCD_RGB_DATA_WIDTH,                    // Data width for RGB
-        .bits_per_pixel = LCD_RGB_BIT_PER_PIXEL,             // Bits per pixel
-        .num_fbs = LVGL_PORT_LCD_RGB_BUFFER_NUMS,                // Number of frame buffers
-        .bounce_buffer_size_px = LCD_RGB_BOUNCE_BUFFER_SIZE, // Bounce buffer size in pixels
-        .sram_trans_align = 4,                                   // SRAM transaction alignment
-        .psram_trans_align = 64,                                 // PSRAM transaction alignment
-        .hsync_gpio_num = LCD_IO_RGB_HSYNC,              // GPIO number for horizontal sync
-        .vsync_gpio_num = LCD_IO_RGB_VSYNC,              // GPIO number for vertical sync
-        .de_gpio_num = LCD_IO_RGB_DE,                    // GPIO number for data enable
-        .pclk_gpio_num = LCD_IO_RGB_PCLK,                // GPIO number for pixel clock
-        .disp_gpio_num = LCD_IO_RGB_DISP,                // GPIO number for display
+        .data_width = LCD_RGB_DATA_WIDTH,
+        .bits_per_pixel = LCD_RGB_BIT_PER_PIXEL,
+        .num_fbs = LVGL_PORT_LCD_RGB_BUFFER_NUMS,
+        .bounce_buffer_size_px = LCD_RGB_BOUNCE_BUFFER_SIZE,
+        .sram_trans_align = 4,
+        .psram_trans_align = 64,
+        .hsync_gpio_num = LCD_IO_RGB_HSYNC,
+        .vsync_gpio_num = LCD_IO_RGB_VSYNC,
+        .de_gpio_num = LCD_IO_RGB_DE,
+        .pclk_gpio_num = LCD_IO_RGB_PCLK,
+        .disp_gpio_num = LCD_IO_RGB_DISP,
         .data_gpio_nums = {
-            LCD_IO_RGB_DATA0,
-            LCD_IO_RGB_DATA1,
-            LCD_IO_RGB_DATA2,
-            LCD_IO_RGB_DATA3,
-            LCD_IO_RGB_DATA4,
-            LCD_IO_RGB_DATA5,
-            LCD_IO_RGB_DATA6,
-            LCD_IO_RGB_DATA7,
-            LCD_IO_RGB_DATA8,
-            LCD_IO_RGB_DATA9,
-            LCD_IO_RGB_DATA10,
-            LCD_IO_RGB_DATA11,
-            LCD_IO_RGB_DATA12,
-            LCD_IO_RGB_DATA13,
-            LCD_IO_RGB_DATA14,
-            LCD_IO_RGB_DATA15,
+            LCD_IO_RGB_DATA0, LCD_IO_RGB_DATA1, LCD_IO_RGB_DATA2, LCD_IO_RGB_DATA3,
+            LCD_IO_RGB_DATA4, LCD_IO_RGB_DATA5, LCD_IO_RGB_DATA6, LCD_IO_RGB_DATA7,
+            LCD_IO_RGB_DATA8, LCD_IO_RGB_DATA9, LCD_IO_RGB_DATA10, LCD_IO_RGB_DATA11,
+            LCD_IO_RGB_DATA12, LCD_IO_RGB_DATA13, LCD_IO_RGB_DATA14, LCD_IO_RGB_DATA15,
         },
         .flags = {
-            .fb_in_psram = 1, // Use PSRAM for framebuffer
+            .fb_in_psram = 1,
         },
     };
 
-    // Create a new RGB panel with the specified configuration
     ESP_ERROR_CHECK(esp_lcd_new_rgb_panel(&panel_config, &panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
 
-    ESP_LOGI(TAG, "Initialize RGB LCD panel");         // Log the initialization of the RGB LCD panel
-    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle)); // Initialize the LCD panel
-
-    esp_lcd_touch_handle_t tp_handle = NULL; // Declare a handle for the touch panel
-    ESP_LOGI(TAG, "Initialize I2C bus");   // Log the initialization of the I2C bus
-    i2c_master_init();                     // Initialize the I2C master
-    ESP_LOGI(TAG, "Initialize GPIO");      // Log GPIO initialization
-    gpio_init();                           // Initialize GPIO pins
-    ESP_LOGI(TAG, "Initialize Touch LCD"); // Log touch LCD initialization
-    waveshare_esp32_s3_touch_reset();      // Reset the touch panel
-
-    esp_lcd_panel_io_handle_t tp_io_handle = NULL;                                          // Declare a handle for touch panel I/O
-    const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG(); // Configure I2C for GT911 touch controller
-
-    ESP_LOGI(TAG, "Initialize I2C panel IO");                                                                          // Log I2C panel I/O initialization
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_MASTER_NUM, &tp_io_config, &tp_io_handle)); // Create new I2C panel I/O
-
-    ESP_LOGI(TAG, "Initialize touch controller GT911"); // Log touch controller initialization
-    const esp_lcd_touch_config_t tp_cfg = {
-        .x_max = LCD_H_RES,                // Set maximum X coordinate
-        .y_max = LCD_V_RES,                // Set maximum Y coordinate
-        .rst_gpio_num = LCD_PIN_NUM_TOUCH_RST, // GPIO number for reset
-        .int_gpio_num = LCD_PIN_NUM_TOUCH_INT, // GPIO number for interrupt
-        .levels = {
-            .reset = 0,     // Reset level
-            .interrupt = 0, // Interrupt level
-        },
-        .flags = {
-            .swap_xy = 0,  // No swap of X and Y
-            .mirror_x = 0, // No mirroring of X
-            .mirror_y = 0, // No mirroring of Y
-        },
-    };
-    ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &tp_handle)); // Create new I2C GT911 touch controller
-
-    //ESP_ERROR_CHECK(lvgl_port_init(panel_handle, tp_handle)); // Initialize LVGL with the panel and touch handles
-
-    // Register callbacks for RGB panel events
+    /* -----------------------------
+     * 2. Register RGB panel events
+     * ----------------------------- */
     esp_lcd_rgb_panel_event_callbacks_t cbs = {
 #if LCD_RGB_BOUNCE_BUFFER_SIZE > 0
-        .on_bounce_frame_finish = rgb_lcd_on_vsync_event, // Callback for bounce frame finish
+        .on_bounce_frame_finish = rgb_lcd_on_vsync_event,
 #else
-        .on_vsync = rgb_lcd_on_vsync_event, // Callback for vertical sync
+        .on_vsync = rgb_lcd_on_vsync_event,
 #endif
     };
-    ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, NULL)); // Register event callbacks
+    ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, NULL));
 
-    lv_init(); // Initialize LVGL
-    ESP_ERROR_CHECK(tick_init()); // Initialize the tick timer
+    /* -----------------------------
+     * 3. Create LVGL display
+     * ----------------------------- */
+    lv_display_t *display = lv_display_create(LCD_H_RES, LCD_V_RES);
+    lv_display_set_user_data(display, panel_handle);
+    lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
 
-    lv_disp_t *disp = display_init(panel_handle); // Initialize the display
-    assert(disp); // Ensure the display initialization was successful
-    
-    if (tp_handle) {
-        lv_indev_t *indev = indev_init(tp_handle); // Initialize the touchpad input device
-        assert(indev); // Ensure the input device initialization was successful
+    /* RGB panels do NOT use flush_cb — LVGL writes directly into framebuffer */
+    lv_display_set_flush_cb(display, NULL);
 
-        // Set touch panel orientation based on rotation
-#if EXAMPLE_LVGL_PORT_ROTATION_90
-        esp_lcd_touch_set_swap_xy(tp_handle, true); // Swap X and Y coordinates
-        esp_lcd_touch_set_mirror_y(tp_handle, true); // Mirror Y coordinates
-#elif EXAMPLE_LVGL_PORT_ROTATION_180
-        esp_lcd_touch_set_mirror_x(tp_handle, true); // Mirror X coordinates
-        esp_lcd_touch_set_mirror_y(tp_handle, true); // Mirror Y coordinates
-#elif EXAMPLE_LVGL_PORT_ROTATION_270
-        esp_lcd_touch_set_swap_xy(tp_handle, true); // Swap X and Y coordinates
-        esp_lcd_touch_set_mirror_x(tp_handle, true); // Mirror X coordinates
-#endif
-    }
+    /* -----------------------------
+     * 4. LVGL tick timer
+     * ----------------------------- */
+    ESP_LOGI(TAG, "Install LVGL tick timer");
+    const esp_timer_create_args_t lvgl_tick_timer_args = {
+        .callback = &increase_lvgl_tick,
+        .name = "lvgl_tick"
+    };
+    esp_timer_handle_t lvgl_tick_timer = NULL;
+    ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, LVGL_TICK_PERIOD_MS * 1000));
 
-    lvgl_mux = xSemaphoreCreateRecursiveMutex(); // Create a recursive mutex for LVGL
+    /* -----------------------------
+     * 5. Touch controller (GT911)
+     * ----------------------------- */
+    ESP_LOGI(TAG, "Initialize I2C bus");
+    i2c_master_init();
+    gpio_init();
+    waveshare_esp32_s3_touch_reset();
 
-    xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, &lvgl_task_handle);
+    esp_lcd_panel_io_handle_t tp_io_handle = NULL;
+    const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
+
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(
+        (esp_lcd_i2c_bus_handle_t)I2C_MASTER_NUM,
+        &tp_io_config,
+        &tp_io_handle
+    ));
+
+    esp_lcd_touch_handle_t tp_handle = NULL;
+    const esp_lcd_touch_config_t tp_cfg = {
+        .x_max = LCD_H_RES,
+        .y_max = LCD_V_RES,
+        .rst_gpio_num = LCD_PIN_NUM_TOUCH_RST,
+        .int_gpio_num = LCD_PIN_NUM_TOUCH_INT,
+        .levels = { .reset = 0, .interrupt = 0 },
+        .flags = { .swap_xy = 0, .mirror_x = 0, .mirror_y = 0 },
+    };
+
+    ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &tp_handle));
+
+    /* -----------------------------
+     * 6. LVGL input device
+     * ----------------------------- */
+    lv_indev_t *indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_display(indev, display);
+    lv_indev_set_user_data(indev, tp_handle);
+    lv_indev_set_read_cb(indev, lvgl_touch_5inch_cb); // you should create this
+
+    /* -----------------------------
+     * 7. UI + LVGL task
+     * ----------------------------- */
+    ui_init();
+
+    xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
+
 #endif
 }
 

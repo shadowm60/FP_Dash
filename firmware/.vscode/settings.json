@@ -25,7 +25,7 @@
     "random": "c",
     "nvs_handler.h": "c"
   },
-  "idf.portWin": "COM7",
+  "idf.portWin": "COM8",
   "idf.flashType": "UART",
   "idf.monitorPort": "COM7"
 }
