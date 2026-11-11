@@ -1,0 +1,299 @@
+menu "FP_Dash configuration"
+
+    menu "Display"
+        config BSW_LCD_RGB_BOUNCE_BUFFER_HEIGHT
+            int "RGB Bounce buffer height"
+            default 10
+            help
+                Height of bounce buffer. The width of the buffer is the same as that of the LCD.
+
+        config BSW_LVGL_PORT_TASK_MAX_DELAY_MS
+            int "LVGL timer task maximum delay (ms)"
+            default 500
+            range 2 2000  # Example range, adjust as needed
+            help
+            The maximum delay of the LVGL timer task, in milliseconds.
+
+        config BSW_LVGL_PORT_TASK_MIN_DELAY_MS
+            int "LVGL timer task minimum delay (ms)"
+            default 10
+            range 1 100  # Example range, adjust as needed
+            help
+            The minimum delay of the LVGL timer task, in milliseconds.
+
+        config BSW_LVGL_PORT_TASK_PRIORITY
+            int "LVGL task priority"
+            default 2
+            help
+                The Board Support Package will create a task that will periodically handle LVGL operation in lv_timer_handler().
+
+        config BSW_LVGL_PORT_TASK_STACK_SIZE_KB
+            int "LVGL task stack size (KB)"
+            default 6
+            help
+                Size(KB) of LVGL task stack.
+
+        config BSW_LVGL_PORT_TASK_CORE
+            int "LVGL timer task core"
+            default -1
+            range -1 1
+            help
+            The core of the LVGL timer task.
+            Set to -1 to not specify the core.
+            Set to 1 only if the SoCs support dual-core, otherwise set to -1 or 0.
+
+        config BSW_LVGL_PORT_TICK
+            int "LVGL tick period"
+            default 2
+            range 1 100
+            help
+                Period of LVGL tick timer.
+
+        config BSW_LVGL_PORT_AVOID_TEAR_ENABLE
+            bool "Avoid tearing effect"
+            default "n"
+            help
+                Avoid tearing effect through LVGL buffer mode and double frame buffers of RGB LCD. This feature is only available for RGB LCD.
+
+        choice
+            depends on BSW_LVGL_PORT_AVOID_TEAR_ENABLE
+            prompt "Select Avoid Tearing Mode"
+            default BSW_LVGL_PORT_AVOID_TEAR_MODE_3
+            config BSW_LVGL_PORT_AVOID_TEAR_MODE_1
+                bool "Mode1: LCD double-buffer & LVGL full-refresh"
+            config BSW_LVGL_PORT_AVOID_TEAR_MODE_2
+                bool "Mode2: LCD triple-buffer & LVGL full-refresh"
+            config BSW_LVGL_PORT_AVOID_TEAR_MODE_3
+                bool "Mode3: LCD double-buffer & LVGL direct-mode"
+            help
+                The current tearing prevention mode supports both full refresh mode and direct mode. Tearing prevention mode may consume more PSRAM space
+        endchoice
+
+        config BSW_LVGL_PORT_AVOID_TEAR_MODE
+            depends on BSW_LVGL_PORT_AVOID_TEAR_ENABLE
+            int
+            default 1 if BSW_LVGL_PORT_AVOID_TEAR_MODE_1
+            default 2 if BSW_LVGL_PORT_AVOID_TEAR_MODE_2
+            default 3 if BSW_LVGL_PORT_AVOID_TEAR_MODE_3
+
+        choice
+            depends on BSW_LVGL_PORT_AVOID_TEAR_ENABLE
+            prompt "Select rotation"
+            default BSW_LVGL_PORT_ROTATION_0
+            config BSW_LVGL_PORT_ROTATION_0
+                bool "Rotation 0"
+            config BSW_LVGL_PORT_ROTATION_90
+                bool "Rotation 90"
+            config BSW_LVGL_PORT_ROTATION_180
+                bool "Rotation 180"
+            config BSW_LVGL_PORT_ROTATION_270
+                bool "Rotation 270"
+        endchoice
+
+        config BSW_LVGL_PORT_ROTATION_DEGREE
+            int
+            default 0 if BSW_LVGL_PORT_ROTATION_0
+            default 90 if BSW_LVGL_PORT_ROTATION_90
+            default 180 if BSW_LVGL_PORT_ROTATION_180
+            default 270 if BSW_LVGL_PORT_ROTATION_270
+
+        choice
+            depends on !BSW_LVGL_PORT_AVOID_TEAR_ENABLE
+            prompt "Select LVGL buffer memory capability"
+            default BSW_LVGL_PORT_BUF_INTERNAL
+            config BSW_LVGL_PORT_BUF_PSRAM
+                bool "PSRAM memory"
+            config BSW_LVGL_PORT_BUF_INTERNAL
+                bool "Internal memory"
+        endchoice
+
+        config BSW_LVGL_PORT_BUF_HEIGHT
+            depends on !BSW_LVGL_PORT_AVOID_TEAR_ENABLE
+            int "LVGL buffer height"
+            default 100
+            help
+                Height of LVGL buffer. The width of the buffer is the same as that of the LCD.
+    endmenu
+
+    menu "SDCARD"
+        config SDCARD_FORMAT_IF_MOUNT_FAILED
+            bool "Format the card if mount failed"
+            default n
+            help
+                If this config item is set, format_if_mount_failed will be set to true and the card will be formatted if
+                the mount has failed.
+            
+        config SDCARD_FORMAT_SD_CARD
+            bool "Format the card at startup"
+            default n
+            help
+                If this config item is set, the card will be formatted at startup.
+
+        config SDCARD_PIN_MOSI
+            int "MOSI GPIO number"
+            default 15 if IDF_TARGET_ESP32
+            default 35 if IDF_TARGET_ESP32S2
+            default 11 if IDF_TARGET_ESP32S3
+            default 5  if IDF_TARGET_ESP32H2
+            default 4  # C3 and others
+
+        config SDCARD_PIN_MISO
+            int "MISO GPIO number"
+            default 2 if IDF_TARGET_ESP32
+            default 37 if IDF_TARGET_ESP32S2
+            default 13 if IDF_TARGET_ESP32S3
+            default 0  if IDF_TARGET_ESP32H2
+            default 6  # C3 and others
+
+        config SDCARD_PIN_CLK
+            int "CLK GPIO number"
+            default 14 if IDF_TARGET_ESP32
+            default 36 if IDF_TARGET_ESP32S2
+            default 12 if IDF_TARGET_ESP32S3
+            default 4  if IDF_TARGET_ESP32H2
+            default 5  # C3 and others
+
+        config SDCARD_PIN_CS
+            int "CS GPIO number"
+            default 13 if IDF_TARGET_ESP32
+            default 34 if IDF_TARGET_ESP32S2
+            default -1 if IDF_TARGET_ESP32S3
+            default 1  # C3 and others
+
+        orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"     
+    
+    endmenu
+
+    menu "IO_EX"
+        config I2C_MASTER_SCL
+            int "SCL GPIO Num"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 9 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+            default 2
+            help
+                GPIO number for I2C Master clock line.
+
+        config I2C_MASTER_SDA
+            int "SDA GPIO Num"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 8 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32S3
+            default 1
+            help
+                GPIO number for I2C Master data line.
+    endmenu
+
+    menu "CAN"
+        config CAN_TX
+            int "CAN_TX GPIO Num"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 20 if IDF_TARGET_ESP32S3
+            default 2
+            help
+                GPIO number for CAN TX. On the ESP32-S3-Touch-LCD-7 CAN shares
+                GPIO19/20 with native USB; the board switches them to the CAN
+                transceiver with CH422G EXIO5 (see board/i2c_io.c).
+
+        config CAN_RX
+            int "CAN_RX GPIO Num"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 19 if IDF_TARGET_ESP32S3
+            default 1
+            help
+                GPIO number for CAN RX.
+
+        config CAN_BITRATE
+            int "CAN bitrate (bit/s)"
+            default 500000
+            help
+                Bus bitrate, used when the signal map does not set one
+                (<bus bitrate="..."/> in the map XML). rusEFI default: 500000.
+
+        config CAN_LISTEN_ONLY
+            bool "Listen only (never ACK, never transmit)"
+            default n
+            help
+                The dash only listens. Leave this off on a bench with just the ECU
+                and the dash: a CAN frame needs at least one other node to ACK it,
+                otherwise the ECU keeps resending and goes error passive.
+                In a car with other nodes on the bus listen-only is the safest.
+    endmenu
+
+    menu "Data logging"
+        config DATALOG_PARAM_PERIOD_MS
+            int "Parameter log row period (ms)"
+            range 10 10000
+            default 50
+            help
+                One CSV row with the latest value of every logged signal is
+                written per period (50 ms = 20 Hz).
+
+        config DATALOG_SYNC_PERIOD_MS
+            int "SD card sync period (ms)"
+            range 500 60000
+            default 2000
+            help
+                Log files are flushed to the card this often. This bounds the data
+                lost when power is cut without stopping the log.
+
+        config DATALOG_RAW_AT_BOOT
+            bool "Log the raw CAN trace by default"
+            default y
+            help
+                Default of Settings > Raw CAN trace on a board without stored
+                settings. Afterwards the choice made on the Settings screen is
+                kept (NVS).
+
+        config DATALOG_PARAMS_AT_BOOT
+            bool "Log decoded signals by default"
+            default y
+            help
+                Default of Settings > Decoded signals on a board without stored
+                settings. Afterwards the choice made on the Settings screen is
+                kept (NVS).
+
+        config DATALOG_IDLE_CLOSE_MS
+            int "Close log files after this long without CAN traffic (ms)"
+            range 1000 600000
+            default 10000
+            help
+                Ignition off: the files are closed so they are complete on the
+                card. The next frame starts new files.
+    endmenu
+
+    menu "Display brightness"
+        config BACKLIGHT_PWM_GPIO
+            int "Backlight dimming PWM GPIO (-1 = software dimming)"
+            range -1 48
+            default -1
+            help
+                The backlight driver is only switched on/off by the CH422G
+                (EXIO2), so by default brightness is done in software: a black,
+                semi-transparent layer over the UI. The backlight power stays
+                the same.
+
+                For real dimming, wire a free GPIO to the backlight driver's
+                dimming input and set it here (inverted PWM: higher average
+                voltage = dimmer). This was worked out on the 5" board
+                (AP3032, R11 10K / C11 1uF); check the 7" schematic before
+                wiring anything.
+    endmenu
+
+    menu "Signal map"
+        config CANMAP_SD_PATH
+            string "Signal map file on the SD card"
+            default "/sdcard/fpdash/map.xml"
+            help
+                Written by tools/fpdash_mapper. When missing (or no card), the
+                map built into the firmware (components/canmap/default_map.xml,
+                rusEFI broadcast) is used.
+
+        config CANMAP_DEFAULT_TIMEOUT_MS
+            int "Default signal timeout (ms)"
+            default 1000
+            help
+                A signal not refreshed for this long is shown as "--". Frames
+                can override it with timeout_ms="..." in the map.
+    endmenu
+
+
+endmenu

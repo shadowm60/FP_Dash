@@ -1,0 +1,12 @@
+# build output
+build/
+# managed by idf_component.yml
+managed_components/
+# local IDF config (defaults live in sdkconfig.defaults)
+sdkconfig
+sdkconfig.old
+# EEZ Studio build marker and editor state
+components/hmi/src/ui/.eez-project-build
+*.eez-project-ui-state
+# python
+__pycache__/

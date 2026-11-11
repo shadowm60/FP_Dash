@@ -1,0 +1,5 @@
+# FP_Dash - freely programmable CAN dash (Waveshare ESP32-S3-Touch-LCD-7)
+cmake_minimum_required(VERSION 3.16)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+add_compile_options("-Wno-attributes")
+project(fp_dash)
