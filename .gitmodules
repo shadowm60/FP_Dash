@@ -1,4 +1,1 @@
-[submodule "firmware/components/isotp"]
-	path = firmware/components/isotp
-	url = https://github.com/shadowm60/isotp-c.git
-	branch = master
+
