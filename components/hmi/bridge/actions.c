@@ -5,11 +5,18 @@
  */
 #include "actions.h"
 #include "views.h"
+#include "datalog.h"
 
 /* Any widget event, e.g. a "Settings" button on a dash page. */
 void action_open_settings(lv_event_t *e)
 {
     nav_open_settings();
+}
+
+/* Settings screen > Retry SD (visible while logging is stopped by an SD error) */
+void action_retry_sd(lv_event_t *e)
+{
+    datalog_retry();
 }
 
 /* Settings screen > Back */

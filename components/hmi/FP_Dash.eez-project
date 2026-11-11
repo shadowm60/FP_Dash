@@ -356,6 +356,13 @@
         "type": "string",
         "defaultValue": "\"\"",
         "persistent": false
+      },
+      {
+        "objID": "ea8ffd00-3dc5-4f74-bb85-59ccc7a601fa",
+        "name": "sys_log_failed",
+        "type": "boolean",
+        "defaultValue": "false",
+        "persistent": false
       }
     ],
     "structures": [],
@@ -378,6 +385,15 @@
       "localVariables": [],
       "userProperties": [],
       "name": "close_settings",
+      "implementationType": "native"
+    },
+    {
+      "objID": "720b014c-f08d-4897-ae84-a4ed6aeff4f7",
+      "components": [],
+      "connectionLines": [],
+      "localVariables": [],
+      "userProperties": [],
+      "name": "retry_sd",
       "implementationType": "native"
     }
   ],
@@ -6281,6 +6297,112 @@
               },
               "group": "",
               "groupIndex": 0
+            },
+            {
+              "objID": "b79a04f2-5eb8-46b1-8914-2dca10a37061",
+              "type": "LVGLButtonWidget",
+              "left": 250,
+              "top": 112,
+              "width": 140,
+              "height": 44,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "395eedab-d5f0-46e8-831e-3e5ced8451f1",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [
+                {
+                  "objID": "c183310a-310d-405b-81d5-1581fe949b9f",
+                  "eventName": "CLICKED",
+                  "handlerType": "action",
+                  "action": "retry_sd",
+                  "userData": 0
+                }
+              ],
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "px",
+              "children": [
+                {
+                  "objID": "fe7ee52f-38ec-414b-9652-5d81eee8aca5",
+                  "type": "LVGLLabelWidget",
+                  "left": 0,
+                  "top": 0,
+                  "width": 214,
+                  "height": 24,
+                  "customInputs": [],
+                  "customOutputs": [],
+                  "style": {
+                    "objID": "1ad569f1-7aa0-4d88-b72a-08c845c13ca2",
+                    "useStyle": "default",
+                    "conditionalStyles": [],
+                    "childStyles": []
+                  },
+                  "timeline": [],
+                  "eventHandlers": [],
+                  "leftUnit": "px",
+                  "topUnit": "px",
+                  "widthUnit": "content",
+                  "heightUnit": "content",
+                  "children": [],
+                  "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+                  "hiddenFlagType": "literal",
+                  "clickableFlagType": "literal",
+                  "flagScrollbarMode": "",
+                  "flagScrollDirection": "",
+                  "scrollSnapX": "",
+                  "scrollSnapY": "",
+                  "checkedStateType": "literal",
+                  "disabledStateType": "literal",
+                  "states": "",
+                  "localStyles": {
+                    "objID": "e5eae464-1425-4e94-864d-869492fe931f",
+                    "definition": {
+                      "MAIN": {
+                        "DEFAULT": {
+                          "text_font": "MONTSERRAT_22",
+                          "align": "CENTER"
+                        }
+                      }
+                    }
+                  },
+                  "group": "",
+                  "groupIndex": 0,
+                  "text": "Retry SD",
+                  "textType": "literal",
+                  "longMode": "WRAP",
+                  "recolor": false
+                }
+              ],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_ON_FOCUS|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "expression",
+              "clickableFlag": true,
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "109cfb17-e964-4cce-84f8-69863fd4b1d9",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "bg_color": "#c03020"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "hiddenFlag": "!sys_log_failed"
             },
             {
               "objID": "091e183f-550e-4697-8148-e4e9f9b3921c",

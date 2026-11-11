@@ -29,7 +29,7 @@ void app_main(void)
     /* The map is read from the SD card and must be loaded before the UI
      * starts: the bridge resolves its bindings in hmi_init(). */
     if (waveshare_sd_card_init() != ESP_OK) {
-        ESP_LOGW(TAG, "no SD card: built-in map, no logging until a card is inserted and the board restarted");
+        ESP_LOGW(TAG, "no SD card: built-in map; insert a card and use Settings > Retry SD to log");
     }
     ESP_ERROR_CHECK(canmap_load());
 
@@ -50,7 +50,7 @@ void app_main(void)
     ESP_ERROR_CHECK(canmap_start());
     app_settings_t cfg;
     settings_get(&cfg);
-    ESP_ERROR_CHECK(datalog_init(MOUNT_POINT, cfg.log_raw, cfg.log_params));
+    ESP_ERROR_CHECK(datalog_init(MOUNT_POINT, cfg.log_raw, cfg.log_params, waveshare_sd_card_remount));
 
     ESP_LOGI(TAG, "running");
 }

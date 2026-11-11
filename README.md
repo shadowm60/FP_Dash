@@ -105,6 +105,7 @@ Name convention:
 | `sys_set_brightness` | integer | Settings slider 10–100 (two-way bound), stored |
 | `sys_brightness_text` | string | "Brightness 80 %" |
 | `sys_log_info`, `sys_can_info`, `sys_map_info` | string | Settings screen info texts |
+| `sys_log_failed` | boolean | logging stopped by an SD error (shows *Retry SD*, action `retry_sd`) |
 | `sys_version` | string | firmware / IDF version |
 
 ### Pages and navigation
@@ -149,6 +150,17 @@ off. All files of one session share the same number.
 | `evt_NNN.txt` | Map in use (or why the SD map was rejected), CAN error counters, dropped frames. |
 
 Timestamps are seconds since boot, because the board has no RTC.
+
+**SD errors.** The board has no usable card detect, so the logger does not
+retry on its own. After a failure (no card at boot, card full, card pulled out):
+- logging stops;
+- the status line says "LOG stopped: SD error";
+- Settings shows the reason and a **Retry SD** button.
+
+*Retry SD* closes any open files, unmounts and remounts the card, then logging
+resumes with the next CAN frame. Insert or swap the card, then press it. A card
+that mounts but has no FAT file system (e.g. exFAT) is reported as such in the
+serial log. Format it as FAT32.
 
 ## Build
 

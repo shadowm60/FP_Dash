@@ -6,6 +6,7 @@
  *   sys_set_brightness   integer  slider    -> brightness 10..100 %  (stored)
  *   sys_brightness_text  string   "Brightness 80 %"
  *   sys_log_info         string   log files, rows, dropped frames, errors
+ *   sys_log_failed       boolean  logging stopped by an SD error: shows Retry SD
  *   sys_can_info         string   bitrate, bus state, frame counters
  *   sys_map_info         string   map in use, counts, why the SD map was rejected
  *   sys_version          string   firmware version
@@ -30,12 +31,12 @@
 
 typedef enum {
     V_LOG_RAW, V_LOG_PARAMS, V_BRIGHTNESS, V_BRIGHTNESS_TEXT,
-    V_LOG_INFO, V_CAN_INFO, V_MAP_INFO, V_VERSION, V_COUNT
+    V_LOG_INFO, V_LOG_FAILED, V_CAN_INFO, V_MAP_INFO, V_VERSION, V_COUNT
 } var_t;
 
 static const char *const s_names[V_COUNT] = {
     "sys_set_log_raw", "sys_set_log_params", "sys_set_brightness", "sys_brightness_text",
-    "sys_log_info", "sys_can_info", "sys_map_info", "sys_version",
+    "sys_log_info", "sys_log_failed", "sys_can_info", "sys_map_info", "sys_version",
 };
 static int32_t s_var[V_COUNT];
 
@@ -134,7 +135,11 @@ static void log_info(void)
     char buf[256];
     int n = 0;
 
-    if (!ls.raw_enabled && !ls.params_enabled) {
+    if (ls.retrying) {
+        n += snprintf(buf + n, sizeof(buf) - n, "Mounting SD card...\n");
+    } else if (ls.failed) {
+        n += snprintf(buf + n, sizeof(buf) - n, "Logging stopped: %s\nInsert / check the card, then Retry SD", ls.error);
+    } else if (!ls.raw_enabled && !ls.params_enabled) {
         n += snprintf(buf + n, sizeof(buf) - n, "Logging off");
     } else if (ls.raw_active || ls.params_active) {
         if (ls.raw_active) {
@@ -149,10 +154,13 @@ static void log_info(void)
     if (ls.raw_dropped && n < (int)sizeof(buf)) {
         n += snprintf(buf + n, sizeof(buf) - n, "Dropped: %" PRIu32 " frames\n", ls.raw_dropped);
     }
-    if (ls.error[0] && n < (int)sizeof(buf)) {
-        snprintf(buf + n, sizeof(buf) - n, "Error: %s", ls.error);
+    if (!ls.failed && ls.error[0] && n < (int)sizeof(buf)) {
+        snprintf(buf + n, sizeof(buf) - n, "Last error: %s", ls.error);
     }
     set_str(V_LOG_INFO, buf);
+    if (s_var[V_LOG_FAILED] >= 0) {
+        eez_var_set_bool((uint32_t)s_var[V_LOG_FAILED], ls.failed && !ls.retrying);
+    }
 }
 
 static void can_info(void)

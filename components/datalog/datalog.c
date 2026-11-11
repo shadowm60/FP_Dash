@@ -22,7 +22,6 @@ static const char *TAG = "datalog";
 #define TASK_PRIO           3           /* below the decoder and LVGL */
 #define RAW_QUEUE_LEN       1024        /* ~0.25 s of a fully loaded 500 kbit/s bus */
 #define FILE_BUF_SIZE       16384
-#define OPEN_RETRY_MS       5000        /* e.g. no SD card: retry quietly */
 #define MAX_FILES           999
 #define EVT_STATS_PERIOD_MS 1000
 
@@ -39,7 +38,9 @@ static volatile bool s_want_params;
 static log_file_t    s_raw, s_par, s_evt;
 static bool          s_session;                 /* bus active, files belong to session s_num */
 static int           s_num;
-static uint32_t      s_open_retry_at;
+static bool          s_failed;                  /* SD error: stopped until datalog_retry() */
+static volatile bool s_retry_req;
+static datalog_remount_fn_t s_remount;
 static uint32_t      s_last_rx_count;
 static uint32_t      s_last_rx_ms;
 
@@ -72,6 +73,17 @@ void datalog_get_status(datalog_status_t *out)
     out->raw_dropped = cs.mon_dropped;
 }
 
+/* No automatic retries: the board has no card detect, and retrying a missing
+ * card only fills the console. The user retries from the settings screen. */
+static void fail(const char *msg)
+{
+    set_error(msg);
+    s_failed = true;
+    portENTER_CRITICAL(&s_lock);
+    s_status.failed = true;
+    portEXIT_CRITICAL(&s_lock);
+}
+
 /* ---------------------------------------------------------------- files */
 
 static bool open_file(log_file_t *lf, const char *prefix, const char *ext, char *name_out, size_t name_len)
@@ -98,7 +110,7 @@ static void sync_file(log_file_t *lf)
         return;
     }
     if (fflush(lf->f) != 0 || fsync(fileno(lf->f)) != 0 || ferror(lf->f)) {
-        set_error("SD write failed, log closed");
+        fail("SD write failed, log closed");
         fclose(lf->f);
         lf->f = NULL;
     }
@@ -276,13 +288,12 @@ static void session_close(void)
  * the current session number. */
 static void session_open(uint32_t now)
 {
+    if (s_failed) {
+        return;
+    }
     if (!s_session) {
-        if ((int32_t)(now - s_open_retry_at) < 0) {
-            return;
-        }
         if (!next_session_number()) {
-            set_error("cannot create log dir / file (SD card?)");
-            s_open_retry_at = now + OPEN_RETRY_MS;
+            fail("cannot create log dir (no SD card?)");
             return;
         }
         s_session = true;
@@ -319,9 +330,8 @@ static void session_open(uint32_t now)
         }
     }
     if (failed) {
-        set_error("cannot create log file (SD card?)");
         session_close();
-        s_open_retry_at = now + OPEN_RETRY_MS;
+        fail("cannot create log file (SD card full / read-only?)");
     }
 }
 
@@ -360,6 +370,39 @@ static void session_service(uint32_t now)
     }
 }
 
+/* ---------------------------------------------------------------- retry */
+
+static void do_retry(void)
+{
+    s_retry_req = false;
+    session_close();                    /* nothing may be open during the remount */
+    esp_err_t err = s_remount ? s_remount() : ESP_OK;
+    if (err != ESP_OK) {
+        char msg[48];
+        snprintf(msg, sizeof(msg), "SD card: %s", esp_err_to_name(err));
+        fail(msg);
+        portENTER_CRITICAL(&s_lock);
+        s_status.retrying = false;
+        portEXIT_CRITICAL(&s_lock);
+        return;
+    }
+    s_failed = false;
+    portENTER_CRITICAL(&s_lock);
+    s_status.failed = false;
+    s_status.retrying = false;
+    s_status.error[0] = '\0';
+    portEXIT_CRITICAL(&s_lock);
+    ESP_LOGI(TAG, "SD card ready, logging resumes with the next CAN frame");
+}
+
+void datalog_retry(void)
+{
+    portENTER_CRITICAL(&s_lock);
+    s_status.retrying = true;
+    portEXIT_CRITICAL(&s_lock);
+    s_retry_req = true;
+}
+
 /* ---------------------------------------------------------------- task */
 
 static void datalog_task(void *arg)
@@ -370,6 +413,9 @@ static void datalog_task(void *arg)
 
     while (1) {
         uint32_t now = can_if_now_ms();
+        if (s_retry_req) {
+            do_retry();
+        }
         session_service(now);
         evt_service(now);
 
@@ -412,8 +458,9 @@ static char *alloc_buf(void)
     return heap_caps_malloc(FILE_BUF_SIZE, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
 
-esp_err_t datalog_init(const char *dir, bool raw, bool params)
+esp_err_t datalog_init(const char *dir, bool raw, bool params, datalog_remount_fn_t remount)
 {
+    s_remount = remount;
     snprintf(s_dir, sizeof(s_dir), "%s/log", dir);
     s_raw_queue = xQueueCreate(RAW_QUEUE_LEN, sizeof(can_frame_t));
     if (s_raw_queue == NULL) {

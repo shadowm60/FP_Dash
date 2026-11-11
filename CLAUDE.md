@@ -78,7 +78,9 @@ Done, builds, **not run on hardware yet**:
 
 To verify on the board first:
 - the EXIO5 CAN switch
-- the SD card mount
+- the SD card mount (first hardware run: logging failed with "cannot create
+  log dir" = card not mounted at boot; cause not known yet). Logging now stops
+  on SD errors and waits for Settings > Retry SD (remount).
 - whether the MLV CSV with a units row opens in MegaLogViewer
   (`~/tools/MegaLogViewerHD`)
 - the arc/tile layout on the real panel, and the `race` RPM bar (the bar

@@ -9,6 +9,7 @@ extern "C" {
 
 extern void action_open_settings(lv_event_t * e);
 extern void action_close_settings(lv_event_t * e);
+extern void action_retry_sd(lv_event_t * e);
 
 #ifdef __cplusplus
 }

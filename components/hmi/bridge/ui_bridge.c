@@ -189,7 +189,9 @@ static void status_timer_cb(lv_timer_t *t)
     datalog_status_t ls;
     datalog_get_status(&ls);
     if (s_var_log >= 0) {
-        if (!ls.raw_enabled && !ls.params_enabled) {
+        if (ls.failed) {
+            snprintf(buf, sizeof(buf), "LOG stopped: SD error (Settings > Retry SD)");
+        } else if (!ls.raw_enabled && !ls.params_enabled) {
             snprintf(buf, sizeof(buf), "LOG off");
         } else if (ls.raw_active || ls.params_active) {
             int n = snprintf(buf, sizeof(buf), "%s", ls.raw_active ? ls.raw_file : "");
