@@ -32,10 +32,17 @@
 #include "datalog.h"
 #include "settings.h"
 #include "views.h"
+#include "sdkconfig.h"
 
 static const char *TAG = "ui_bridge";
 
-#define SIGNAL_PERIOD_MS    40      /* 25 Hz, the panel refreshes at ~40 Hz */
+/* Two update rates (menuconfig > FP_DASH > Display): gauges (arc, bar, lamps:
+ * integer/float/boolean variables) move smoothly at 25 Hz, text values at
+ * 10 Hz, which is as fast as digits can be read. Every changed widget is
+ * redrawn, so these periods set most of the render load. */
+#define GAUGE_PERIOD_MS     CONFIG_FP_DASH_UI_GAUGE_PERIOD_MS
+#define TEXT_PERIOD_MS      CONFIG_FP_DASH_UI_TEXT_PERIOD_MS
+#define TICK_FALLBACK_MS    100     /* EEZ tick at least this often (flow, page change) */
 #define STATUS_PERIOD_MS    500
 #define SETTINGS_PERIOD_MS  100     /* settings controls: slider feels immediate */
 #define STALE_TEXT          "--"
@@ -43,6 +50,7 @@ static const char *TAG = "ui_bridge";
 typedef struct {
     const canmap_ui_binding_t *b;
     uint32_t var;
+    uint32_t next_ms;           /* period_ms bindings: not before this time */
     bool     sent;              /* something was written at least once */
     bool     last_valid;
     float    last_num;
@@ -127,15 +135,61 @@ static void push(binding_rt_t *r, bool valid, float v)
     r->last_valid = valid;
 }
 
-static void signal_timer_cb(lv_timer_t *t)
+/*
+ * EEZ tick: evaluates the bindings of the current page and updates the
+ * widgets whose value changed. It is not cheap (every binding goes through
+ * the flow expression evaluator), so it runs only after a variable changed,
+ * plus a slow fallback for flow actions and page changes.
+ */
+static uint32_t s_last_tick;
+
+static void apply_vars(bool force)
+{
+    if (eez_vars_dirty || force) {
+        eez_vars_dirty = false;
+        s_last_tick = lv_tick_get();
+        ui_tick();
+    }
+}
+
+static void push_bindings(bool text)
 {
     uint32_t now = can_if_now_ms();
     for (size_t i = 0; i < s_nrt; i++) {
         binding_rt_t *r = &s_rt[i];
+        if ((r->b->type == CANMAP_UI_STRING) != text) {
+            continue;
+        }
+        if (r->b->period_ms != 0) {
+            if (r->sent && (int32_t)(now - r->next_ms) < 0) {
+                continue;
+            }
+            r->next_ms = now + r->b->period_ms;
+        }
         ch_sample_t smp;
         bool valid = ch_get(r->b->ch, now, &smp);
-        push(r, valid, valid ? smp.value * r->b->scale + r->b->offset : 0.0f);
+        float v = 0.0f;
+        if (valid) {
+            v = smp.value * r->b->scale + r->b->offset;
+            if (r->b->step > 0.0f) {
+                v = roundf(v / r->b->step) * r->b->step;
+            }
+        }
+        push(r, valid, v);
     }
+    /* widgets now, so the display refresh later in this lv_timer_handler()
+     * pass already draws them (bridge timers run before the refresh timer) */
+    apply_vars(false);
+}
+
+static void gauge_timer_cb(lv_timer_t *t)
+{
+    push_bindings(false);
+}
+
+static void text_timer_cb(lv_timer_t *t)
+{
+    push_bindings(true);
 }
 
 /* ---------------------------------------------------------------- status line */
@@ -260,12 +314,15 @@ void hmi_init(void)
     settings_get(&cfg);
     nav_init(cfg.page);
 
-    lv_timer_create(signal_timer_cb, SIGNAL_PERIOD_MS, NULL);
+    lv_timer_create(gauge_timer_cb, GAUGE_PERIOD_MS, NULL);
+    lv_timer_create(text_timer_cb, TEXT_PERIOD_MS, NULL);
     lv_timer_create(status_timer_cb, STATUS_PERIOD_MS, NULL);
     lv_timer_create(settings_timer_cb, SETTINGS_PERIOD_MS, NULL);
 }
 
 void hmi_tick(void)
 {
-    ui_tick();
+    /* called after every lv_timer_handler(): catches variables written by
+     * the status/settings timers and event handlers */
+    apply_vars(lv_tick_elaps(s_last_tick) >= TICK_FALLBACK_MS);
 }

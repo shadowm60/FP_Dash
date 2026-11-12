@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <inttypes.h>
+#include <string.h>
+#include "esp_heap_caps.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -20,6 +23,72 @@ static SemaphoreHandle_t lvgl_mux;                       // LVGL mutex for synch
 static TaskHandle_t lvgl_task_handle = NULL;             // Handle for the LVGL task
 static lvgl_port_hook_t s_ui_init_hook = NULL;           // Called once inside the LVGL task (UI build)
 static lvgl_port_hook_t s_ui_tick_hook = NULL;           // Called every LVGL loop with the lock held
+
+/*
+ * Performance log (CONFIG_BSW_LVGL_PORT_PERF_LOG): one console line every 5 s.
+ * LVGL's perf monitor counts the time flush_callback blocks for the vsync as
+ * CPU load; here that wait is measured on its own, and the real load of each
+ * core comes from the FreeRTOS idle task run time.
+ */
+#if CONFIG_BSW_LVGL_PORT_PERF_LOG
+#define PERF_PERIOD_US  (5 * 1000 * 1000)
+static uint32_t s_perf_frames, s_perf_px, s_perf_refr_ms;
+static int64_t  s_perf_wait_us, s_perf_t0;
+static configRUN_TIME_COUNTER_TYPE s_perf_idle0[portNUM_PROCESSORS];
+
+static void perf_monitor_cb(lv_disp_drv_t *drv, uint32_t time_ms, uint32_t px)
+{
+    s_perf_frames++;
+    s_perf_px += px;
+    s_perf_refr_ms += time_ms;
+}
+
+static void perf_report(void)
+{
+    int64_t now = esp_timer_get_time();
+    if (s_perf_t0 == 0) {
+        s_perf_t0 = now;
+        for (int c = 0; c < portNUM_PROCESSORS; c++) {
+            s_perf_idle0[c] = ulTaskGetIdleRunTimeCounterForCore(c);
+        }
+        return;
+    }
+    int64_t dt = now - s_perf_t0;
+    if (dt < PERF_PERIOD_US) {
+        return;
+    }
+    int load[portNUM_PROCESSORS];
+    for (int c = 0; c < portNUM_PROCESSORS; c++) {
+        configRUN_TIME_COUNTER_TYPE idle = ulTaskGetIdleRunTimeCounterForCore(c);
+        /* run time counter = esp_timer microseconds; unsigned diff survives wrap */
+        int64_t idle_us = (int64_t)(configRUN_TIME_COUNTER_TYPE)(idle - s_perf_idle0[c]);
+        load[c] = 100 - (int)(idle_us * 100 / dt);
+        s_perf_idle0[c] = idle;
+    }
+    uint32_t f = s_perf_frames ? s_perf_frames : 1;
+    uint32_t refr = s_perf_refr_ms / f;
+    uint32_t wait = (uint32_t)(s_perf_wait_us / 1000 / f);
+    ESP_LOGI(TAG, "%.1f fps, %" PRIu32 " px/frame, %" PRIu32 " ms/frame (vsync wait %" PRIu32 ", render+copy %" PRIu32 "), CPU0 %d%% CPU1 %d%%",
+             s_perf_frames * 1e6 / dt, s_perf_px / f, refr, wait, refr > wait ? refr - wait : 0,
+             load[0], portNUM_PROCESSORS > 1 ? load[portNUM_PROCESSORS - 1] : 0);
+    s_perf_frames = s_perf_px = s_perf_refr_ms = 0;
+    s_perf_wait_us = 0;
+    s_perf_t0 = now;
+}
+#endif
+
+/* Block until the RGB driver has started scanning out the new frame buffer. */
+static inline void wait_vsync(void)
+{
+#if CONFIG_BSW_LVGL_PORT_PERF_LOG
+    int64_t t = esp_timer_get_time();
+#endif
+    ulTaskNotifyValueClear(NULL, ULONG_MAX);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+#if CONFIG_BSW_LVGL_PORT_PERF_LOG
+    s_perf_wait_us += esp_timer_get_time() - t;
+#endif
+}
 
 #if BSW_LVGL_PORT_ROTATION_DEGREE != 0
 // Function to get the next frame buffer for double buffering
@@ -220,8 +289,7 @@ static void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t
             esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, next_fb);
 
             /* Wait for the current frame buffer to complete transmission */
-            ulTaskNotifyValueClear(NULL, ULONG_MAX);
-            ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            wait_vsync();
 
             /* Synchronously update the dirty area for another frame buffer */
             flush_dirty_copy(flush_get_next_buf(panel_handle), color_map, &dirty_area);
@@ -251,8 +319,7 @@ static void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t
                 esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, next_fb);
 
                 /* Wait for the current frame buffer to complete transmission */
-                ulTaskNotifyValueClear(NULL, ULONG_MAX);
-                ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+                wait_vsync();
 
                 if (probe_result == FLUSH_PROBE_PART_COPY) {
                     /* Synchronously update the dirty area for another frame buffer */
@@ -283,8 +350,7 @@ static void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t
         esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
 
         /* Wait for the last frame buffer to complete transmission */
-        ulTaskNotifyValueClear(NULL, ULONG_MAX);
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        wait_vsync();
     }
 
     lv_disp_flush_ready(drv); // Mark the display flush as complete
@@ -305,8 +371,7 @@ static void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t
     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
 
     /* Wait for the last frame buffer to complete transmission */
-    ulTaskNotifyValueClear(NULL, ULONG_MAX);
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    wait_vsync();
 
     lv_disp_flush_ready(drv); // Mark the display flush as complete
 }
@@ -348,6 +413,62 @@ void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color
 
     lv_disp_flush_ready(drv); // Mark the display flush as complete
 }
+
+#elif LVGL_PORT_SRAM_RENDER
+
+/*
+ * Mode 4: LVGL renders the dirty areas into a small buffer in internal RAM
+ * (much faster than drawing straight into PSRAM), flush copies each chunk
+ * into the back frame buffer. After the last chunk the panel switches to the
+ * back buffer at the next vsync, then this frame's dirty areas are copied
+ * into the other buffer, so both always hold the complete picture.
+ */
+#if BSW_LVGL_PORT_ROTATION_DEGREE != 0
+#error "Avoid tearing mode 4 supports rotation 0 only"
+#endif
+
+static uint16_t *s_fb[2];   /* panel frame buffers (PSRAM) */
+static int s_back = 1;      /* the panel shows s_fb[0] after init */
+
+static void copy_rect(uint16_t *dst, const uint16_t *src, const lv_area_t *a)
+{
+    const size_t len = (size_t)(a->x2 - a->x1 + 1) * sizeof(uint16_t);
+    for (int y = a->y1; y <= a->y2; y++) {
+        size_t off = (size_t)y * LVGL_PORT_H_RES + a->x1;
+        memcpy(dst + off, src + off, len);
+    }
+}
+
+static void flush_callback(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
+{
+    esp_lcd_panel_handle_t panel_handle = (esp_lcd_panel_handle_t) drv->user_data;
+    uint16_t *back = s_fb[s_back];
+
+    /* chunk (packed, area width x height) -> back frame buffer */
+    const int w = area->x2 - area->x1 + 1;
+    const uint16_t *src = (const uint16_t *)color_map;
+    for (int y = area->y1; y <= area->y2; y++, src += w) {
+        memcpy(back + (size_t)y * LVGL_PORT_H_RES + area->x1, src, w * sizeof(uint16_t));
+    }
+
+    if (lv_disp_flush_is_last(drv)) {
+        /* show the back buffer from the next frame on */
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, LVGL_PORT_H_RES, LVGL_PORT_V_RES, back);
+        wait_vsync();
+
+        /* the new back buffer still lacks what was drawn in this frame */
+        uint16_t *front = back;
+        s_back ^= 1;
+        lv_disp_t *disp = _lv_refr_get_disp_refreshing();
+        for (int i = 0; i < disp->inv_p; i++) {
+            if (disp->inv_area_joined[i] == 0) {
+                copy_rect(s_fb[s_back], front, &disp->inv_areas[i]);
+            }
+        }
+    }
+
+    lv_disp_flush_ready(drv);
+}
 #endif
 
 #else
@@ -381,7 +502,14 @@ static lv_disp_t *display_init(esp_lcd_panel_handle_t panel_handle)
     int buffer_size = 0; // Size of the buffer
 
     ESP_LOGD(TAG, "Malloc memory for LVGL buffer");
-#if LVGL_PORT_AVOID_TEAR_ENABLE
+#if LVGL_PORT_AVOID_TEAR_ENABLE && LVGL_PORT_SRAM_RENDER
+    ESP_ERROR_CHECK(esp_lcd_rgb_panel_get_frame_buffer(panel_handle, 2, (void **)&s_fb[0], (void **)&s_fb[1]));
+    buffer_size = LVGL_PORT_H_RES * CONFIG_BSW_LVGL_PORT_SRAM_BUF_HEIGHT;
+    buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    assert(buf1);
+    ESP_LOGI(TAG, "render buffer: %d KB internal RAM, %d lines", buffer_size * (int)sizeof(lv_color_t) / 1024,
+             CONFIG_BSW_LVGL_PORT_SRAM_BUF_HEIGHT);
+#elif LVGL_PORT_AVOID_TEAR_ENABLE
     // To avoid tearing effect, at least two frame buffers are needed: one for LVGL rendering and another for RGB output
     buffer_size = LVGL_PORT_H_RES * LVGL_PORT_V_RES;
 #if (LVGL_PORT_LCD_RGB_BUFFER_NUMS == 3) && (BSW_LVGL_PORT_ROTATION_DEGREE == 0) && LVGL_PORT_FULL_REFRESH
@@ -420,6 +548,9 @@ static lv_disp_t *display_init(esp_lcd_panel_handle_t panel_handle)
     disp_drv.flush_cb = flush_callback; // Set the flush callback
     disp_drv.draw_buf = &disp_buf; // Set the draw buffer
     disp_drv.user_data = panel_handle; // Set user data to panel handle
+#if CONFIG_BSW_LVGL_PORT_PERF_LOG
+    disp_drv.monitor_cb = perf_monitor_cb;
+#endif
 #if LVGL_PORT_FULL_REFRESH
     disp_drv.full_refresh = 1; // Enable full refresh
 #elif LVGL_PORT_DIRECT_MODE
@@ -503,6 +634,9 @@ static void lvgl_port_task(void *arg)
             if (s_ui_tick_hook) {
                 s_ui_tick_hook();
             }
+#if CONFIG_BSW_LVGL_PORT_PERF_LOG
+            perf_report();
+#endif
             lvgl_port_unlock(); // Unlock the mutex
         }
         // Ensure the delay time is within limits

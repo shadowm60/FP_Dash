@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 void hmi_init(void);    /* builds the EEZ UI and starts the data bridge */
-void hmi_tick(void);    /* EEZ flow tick */
+void hmi_tick(void);    /* EEZ flow tick, only when variables changed (+ 100 ms fallback) */
 
 #ifdef __cplusplus
 }

@@ -101,10 +101,12 @@ static esp_err_t load(void)
     if (err != ESP_OK) {
         return err;
     }
-    /* Accept blobs written before fields were appended (same version, shorter). */
+    /* Accept blobs written before fields were appended (same version, shorter).
+     * The blob is the whole stored_t, so it can end in padding: len may be a
+     * little more than hdr + size (e.g. 32 for 4 + 27). */
     size_t hdr = offsetof(stored_t, data);
     if (len < hdr || blob.version != SETTINGS_VER || blob.size > sizeof(app_settings_t) ||
-        len != hdr + blob.size) {
+        len < hdr + blob.size) {
         ESP_LOGW(TAG, "stored settings incompatible (ver %u), using defaults", blob.version);
         return ESP_ERR_INVALID_VERSION;
     }

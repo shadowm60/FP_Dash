@@ -317,7 +317,7 @@ esp_err_t can_if_init(const can_if_config_t *cfg)
     ESP_RETURN_ON_ERROR(twai_node_enable(s_node), TAG, "enable");
     s_stats.state = CAN_IF_BUS_ACTIVE;
 
-    if (xTaskCreate(can_tx_task, "can_tx", TX_TASK_STACK, NULL, TX_TASK_PRIO, NULL) != pdPASS) {
+    if (xTaskCreatePinnedToCore(can_tx_task, "can_tx", TX_TASK_STACK, NULL, TX_TASK_PRIO, NULL, 0) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
 

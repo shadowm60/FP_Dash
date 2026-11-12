@@ -483,7 +483,7 @@ esp_err_t datalog_init(const char *dir, bool raw, bool params, datalog_remount_f
 
     s_want_raw = raw;
     s_want_params = params;
-    if (xTaskCreate(datalog_task, "datalog", TASK_STACK, NULL, TASK_PRIO, NULL) != pdPASS) {
+    if (xTaskCreatePinnedToCore(datalog_task, "datalog", TASK_STACK, NULL, TASK_PRIO, NULL, 0) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
     ESP_LOGI(TAG, "ready (%s, %u logged signals, row every %d ms)", s_dir, (unsigned)s_ncols,

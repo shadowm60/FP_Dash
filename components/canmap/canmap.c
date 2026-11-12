@@ -19,7 +19,7 @@ static const char *TAG = "canmap";
 #define MAX_FILE_SIZE       (512 * 1024)
 #define DECODE_QUEUE_LEN    256
 #define DECODE_TASK_STACK   4096
-#define DECODE_TASK_PRIO    7           /* above datalog and LVGL: values are never late */
+#define DECODE_TASK_PRIO    7           /* above datalog: values are never late. Core 0: the UI has core 1 */
 
 extern const char default_map_start[] asm("_binary_default_map_xml_start");
 extern const char default_map_end[]   asm("_binary_default_map_xml_end");
@@ -311,6 +311,19 @@ static bool on_ui(map_t *m, const xml_attr_t *a, int n, int line)
     s = xml_attr(a, n, "offset");
     if (s && !parse_float(s, &u.b.offset)) {
         return fail(m, line, "bad offset");
+    }
+    s = xml_attr(a, n, "step");
+    if (s && (!parse_float(s, &u.b.step) || u.b.step < 0.0f)) {
+        return fail(m, line, "bad step (>= 0)");
+    }
+    s = xml_attr(a, n, "period_ms");
+    if (s) {
+        char *end;
+        unsigned long p = strtoul(s, &end, 10);
+        if (*end != '\0' || p > 60000) {
+            return fail(m, line, "bad period_ms (0..60000)");
+        }
+        u.b.period_ms = (uint16_t)p;
     }
     s = xml_attr(a, n, "format");
     if (s) {
@@ -646,7 +659,7 @@ esp_err_t canmap_start(void)
     if (err != ESP_OK) {
         return err;
     }
-    if (xTaskCreate(decode_task, "canmap", DECODE_TASK_STACK, NULL, DECODE_TASK_PRIO, NULL) != pdPASS) {
+    if (xTaskCreatePinnedToCore(decode_task, "canmap", DECODE_TASK_STACK, NULL, DECODE_TASK_PRIO, NULL, 0) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
     return ESP_OK;

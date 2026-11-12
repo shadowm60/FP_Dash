@@ -58,13 +58,20 @@ menu "FP_Dash configuration"
         choice
             depends on BSW_LVGL_PORT_AVOID_TEAR_ENABLE
             prompt "Select Avoid Tearing Mode"
-            default BSW_LVGL_PORT_AVOID_TEAR_MODE_3
+            default BSW_LVGL_PORT_AVOID_TEAR_MODE_4
             config BSW_LVGL_PORT_AVOID_TEAR_MODE_1
                 bool "Mode1: LCD double-buffer & LVGL full-refresh"
             config BSW_LVGL_PORT_AVOID_TEAR_MODE_2
                 bool "Mode2: LCD triple-buffer & LVGL full-refresh"
             config BSW_LVGL_PORT_AVOID_TEAR_MODE_3
                 bool "Mode3: LCD double-buffer & LVGL direct-mode"
+            config BSW_LVGL_PORT_AVOID_TEAR_MODE_4
+                bool "Mode4: LCD double-buffer & LVGL render in internal RAM"
+                help
+                    LVGL draws the changed areas into a small internal RAM
+                    buffer and copies them into the PSRAM frame buffer.
+                    Drawing in internal RAM is several times faster than
+                    drawing straight into PSRAM (mode 3). Rotation 0 only.
             help
                 The current tearing prevention mode supports both full refresh mode and direct mode. Tearing prevention mode may consume more PSRAM space
         endchoice
@@ -75,6 +82,16 @@ menu "FP_Dash configuration"
             default 1 if BSW_LVGL_PORT_AVOID_TEAR_MODE_1
             default 2 if BSW_LVGL_PORT_AVOID_TEAR_MODE_2
             default 3 if BSW_LVGL_PORT_AVOID_TEAR_MODE_3
+            default 4 if BSW_LVGL_PORT_AVOID_TEAR_MODE_4
+
+        config BSW_LVGL_PORT_SRAM_BUF_HEIGHT
+            depends on BSW_LVGL_PORT_AVOID_TEAR_MODE_4
+            int "Internal RAM render buffer height (lines)"
+            range 10 120
+            default 40
+            help
+                Lines of 800 px (1.6 KB each). 40 lines = 64 KB of internal RAM.
+                Bigger = fewer chunks per area, a little faster.
 
         choice
             depends on BSW_LVGL_PORT_AVOID_TEAR_ENABLE
@@ -113,6 +130,38 @@ menu "FP_Dash configuration"
             default 100
             help
                 Height of LVGL buffer. The width of the buffer is the same as that of the LCD.
+
+        config BSW_LVGL_PORT_PERF_LOG
+            bool "Log display performance every 5 s"
+            default y
+            select FREERTOS_GENERATE_RUN_TIME_STATS
+            help
+                Prints one line every 5 s on the console:
+                  frames/s, rendered pixels per frame,
+                  time per refresh split into vsync wait and render+copy,
+                  real CPU load of core 0 and core 1 (from the idle tasks).
+                LVGL's own perf monitor counts the vsync wait as CPU load,
+                this log does not. Costs almost nothing; turn it off when the
+                UI is final.
+
+        config FP_DASH_UI_GAUGE_PERIOD_MS
+            int "UI update period for gauges, bars, lamps (ms)"
+            range 10 1000
+            default 40
+            help
+                Numeric and boolean UI variables (arcs, bars, warning lamps)
+                are refreshed this often. 40 ms = 25 Hz, the panel itself
+                runs at about 39 Hz.
+
+        config FP_DASH_UI_TEXT_PERIOD_MS
+            int "UI update period for text values (ms)"
+            range 10 1000
+            default 100
+            help
+                Text variables (numbers shown as text) are refreshed this
+                often. Digits changing faster than about 10 Hz cannot be read
+                anyway, and every changed text is redrawn: this is the main
+                knob for the render load of text-heavy pages.
     endmenu
 
     menu "SDCARD"

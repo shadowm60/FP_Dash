@@ -79,6 +79,8 @@ python3 tools/fpdash_mapper/fpdash_mapper.py --map map.xml --eez components/hmi/
 | `ui type` | `integer`, `float`, `string` or `boolean`. Must match the variable type in EEZ. |
 | `ui scale`, `ui offset` | Unit conversion for the display only: shown = value x scale + offset. |
 | `ui format` | String variables only: printf format with one float conversion. Default `%.<decimals>f`. |
+| `ui step` | Optional. The shown value is rounded to a multiple of `step` (e.g. `50` for an RPM text). Fewer digit changes = fewer redraws, easier to read. |
+| `ui period_ms` | Optional. Update the variable at most every `period_ms` (e.g. `500` for temperatures). Default: 40 ms for integer/float/boolean, 100 ms for strings (menuconfig). |
 
 When a signal times out, the firmware writes `--` to string variables, 0 to
 integer and float variables, and false to booleans.

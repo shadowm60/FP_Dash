@@ -72,7 +72,8 @@ extern "C" {
  *      - 0: Disable avoid tearing function
  *      - 1: LCD double-buffer & LVGL full-refresh
  *      - 2: LCD triple-buffer & LVGL full-refresh
- *      - 3: LCD double-buffer & LVGL direct-mode (recommended)
+ *      - 3: LCD double-buffer & LVGL direct-mode
+ *      - 4: LCD double-buffer & LVGL partial render in internal RAM (fastest)
  *
  */
 #define LVGL_PORT_AVOID_TEAR_MODE       (CONFIG_BSW_LVGL_PORT_AVOID_TEAR_MODE)
@@ -100,6 +101,9 @@ extern "C" {
 #elif LVGL_PORT_AVOID_TEAR_MODE == 3
 #define LVGL_PORT_LCD_RGB_BUFFER_NUMS   (2)
 #define LVGL_PORT_DIRECT_MODE           (1)
+#elif LVGL_PORT_AVOID_TEAR_MODE == 4
+#define LVGL_PORT_LCD_RGB_BUFFER_NUMS   (2)
+#define LVGL_PORT_SRAM_RENDER           (1)
 #endif /* LVGL_PORT_AVOID_TEAR_MODE */
 
 #if BSW_LVGL_PORT_ROTATION_DEGREE == 0

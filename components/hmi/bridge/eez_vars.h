@@ -14,6 +14,9 @@
 extern "C" {
 #endif
 
+/* true after any setter call; cleared by the bridge after the EEZ tick */
+extern bool eez_vars_dirty;
+
 void eez_var_set_string(uint32_t idx, const char *value);
 void eez_var_set_int(uint32_t idx, int32_t value);
 void eez_var_set_float(uint32_t idx, float value);

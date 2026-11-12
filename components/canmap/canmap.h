@@ -53,6 +53,8 @@ typedef struct {
     float            scale;     /* shown = value * scale + offset (unit conversion) */
     float            offset;
     char             format[CANMAP_FORMAT_MAX];  /* string vars: printf format for one float */
+    float            step;      /* > 0: shown value rounded to a multiple of step (e.g. 50 rpm) */
+    uint16_t         period_ms; /* > 0: update at most this often; 0 = bridge default for the type */
 } canmap_ui_binding_t;
 
 typedef struct {

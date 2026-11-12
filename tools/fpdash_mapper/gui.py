@@ -115,6 +115,8 @@ class MapperApp:
         self.b_scale = tk.StringVar(value='1')
         self.b_offset = tk.StringVar(value='0')
         self.b_format = tk.StringVar()
+        self.b_step = tk.StringVar(value='0')
+        self.b_period = tk.StringVar(value='0')
         ttk.Label(right, text='Variable').grid(row=8, column=0, sticky='w', pady=(6, 0))
         self.var_combo = ttk.Combobox(right, textvariable=self.b_var, width=28)
         self.var_combo.grid(row=8, column=1, columnspan=3, sticky='w', pady=(6, 0))
@@ -128,11 +130,17 @@ class MapperApp:
         ttk.Entry(right, textvariable=self.b_scale, width=10).grid(row=10, column=1, sticky='w')
         ttk.Label(right, text='Offset').grid(row=10, column=2, sticky='w')
         ttk.Entry(right, textvariable=self.b_offset, width=10).grid(row=10, column=3, sticky='w')
+        ttk.Label(right, text='Step').grid(row=11, column=0, sticky='w')
+        ttk.Entry(right, textvariable=self.b_step, width=10).grid(row=11, column=1, sticky='w')
+        ttk.Label(right, text='Period ms').grid(row=11, column=2, sticky='w')
+        ttk.Entry(right, textvariable=self.b_period, width=10).grid(row=11, column=3, sticky='w')
         ttk.Label(right, text='shown = value x scale + offset  (e.g. kPa -> bar: 0.01, lambda -> AFR: 14.7).\n'
-                              'Format (string variables): printf with one float, e.g. "%.1f", empty = decimals.',
-                  foreground='#555555').grid(row=11, column=0, columnspan=4, sticky='w')
+                              'Format (string variables): printf with one float, e.g. "%.1f", empty = decimals.\n'
+                              'Step: round to a multiple (e.g. 50 rpm), 0 = off. Period: update at most every\n'
+                              'N ms (e.g. 500 for temperatures), 0 = default (gauges 40 ms, texts 100 ms).',
+                  foreground='#555555').grid(row=12, column=0, columnspan=4, sticky='w')
         btns = ttk.Frame(right)
-        btns.grid(row=12, column=0, columnspan=4, sticky='w', pady=4)
+        btns.grid(row=13, column=0, columnspan=4, sticky='w', pady=4)
         ttk.Button(btns, text='Add', command=self.add_binding).pack(side='left', padx=2)
         ttk.Button(btns, text='Update selected', command=self.update_binding).pack(side='left', padx=2)
         ttk.Button(btns, text='Remove selected', command=self.remove_binding).pack(side='left', padx=2)
@@ -226,6 +234,10 @@ class MapperApp:
                 extra.append(f'{u.offset:+g}')
             if u.format:
                 extra.append(f'"{u.format}"')
+            if u.step > 0:
+                extra.append(f'step {u.step:g}')
+            if u.period_ms > 0:
+                extra.append(f'{u.period_ms} ms')
             self.bindings.insert('end', f'{u.var}  ({u.type})  {" ".join(extra)}')
         self.var_combo['values'] = [v.name for v in self.eez_vars if v.supported and not v.system]
 
@@ -239,6 +251,8 @@ class MapperApp:
         self.b_scale.set(f'{u.scale:g}')
         self.b_offset.set(f'{u.offset:g}')
         self.b_format.set(u.format)
+        self.b_step.set(f'{u.step:g}')
+        self.b_period.set(str(u.period_ms))
 
     def on_var_chosen(self, ev=None):
         for v in self.eez_vars:
@@ -253,14 +267,20 @@ class MapperApp:
         try:
             scale = float(self.b_scale.get() or 1)
             offset = float(self.b_offset.get() or 0)
+            step = float(self.b_step.get() or 0)
+            period = int(self.b_period.get() or 0)
         except ValueError:
-            messagebox.showwarning('Mapper', 'Scale and offset must be numbers.')
+            messagebox.showwarning('Mapper', 'Scale, offset and step must be numbers, period a whole number.')
+            return None
+        if step < 0 or not 0 <= period <= 60000:
+            messagebox.showwarning('Mapper', 'Step must be >= 0, period 0..60000 ms.')
             return None
         fmt = self.b_format.get().strip()
         if fmt and fmt.count('%') - 2 * fmt.count('%%') != 1:
             messagebox.showwarning('Mapper', 'Format needs exactly one conversion, e.g. "%.1f".')
             return None
-        return UiBinding(var=var, type=self.b_type.get(), scale=scale, offset=offset, format=fmt)
+        return UiBinding(var=var, type=self.b_type.get(), scale=scale, offset=offset, format=fmt,
+                         step=step, period_ms=period)
 
     def add_binding(self):
         if not self.sel:

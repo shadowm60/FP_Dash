@@ -21,6 +21,8 @@ class UiBinding:
     scale: float = 1.0
     offset: float = 0.0
     format: str = ''            # string vars only, '' = from decimals
+    step: float = 0.0           # > 0: shown value rounded to a multiple of step
+    period_ms: int = 0          # > 0: update at most this often, 0 = firmware default
 
 
 @dataclass
@@ -225,6 +227,10 @@ def write_xml(m, path):
                     a['offset'] = _fmt_num(u.offset)
                 if u.format and u.type == 'string':
                     a['format'] = u.format
+                if u.step > 0:
+                    a['step'] = _fmt_num(u.step)
+                if u.period_ms > 0:
+                    a['period_ms'] = str(u.period_ms)
                 ET.SubElement(se, 'ui', a)
     ET.indent(root, space='  ')
     body = ET.tostring(root, encoding='unicode')
@@ -257,7 +263,9 @@ def read_xml(path):
                 s.ui.append(UiBinding(var=ue.get('var'), type=ue.get('type', 'string'),
                                       scale=float(ue.get('scale', '1')),
                                       offset=float(ue.get('offset', '0')),
-                                      format=ue.get('format', '')))
+                                      format=ue.get('format', ''),
+                                      step=float(ue.get('step', '0')),
+                                      period_ms=int(ue.get('period_ms', '0'))))
             fr.signals.append(s)
         m.frames.append(fr)
     return m
