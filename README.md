@@ -191,6 +191,17 @@ After changing them, delete `sdkconfig` (or run `idf.py reconfigure`).
 | Backlight dimming PWM GPIO | -1 | -1 = software dimming |
 | Close logs after idle | 10000 ms | |
 
+## Enclosure
+
+`CAD/` has a parametric FreeCAD back cover with:
+- a service hatch over the USB-C ports and the SD card;
+- a 4-pin car connector;
+- a 12 V → 5 V converter cradle;
+- an optional battery bay;
+- an AMPS mount.
+
+See [CAD/README.md](CAD/README.md).
+
 ## Roadmap / ideas
 
 - Value tables (`VAL_`) for text states (gear N/1/2..., error codes)

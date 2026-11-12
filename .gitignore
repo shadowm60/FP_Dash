@@ -10,3 +10,4 @@ components/hmi/src/ui/.eez-project-build
 *.eez-project-ui-state
 # python
 __pycache__/
+*.FCBak
